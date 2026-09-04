@@ -1,0 +1,15 @@
+﻿# 备份文件
+index_final_*.bak
+index_recovered_*.bak
+index_corrupt_*.bak
+*.zip
+
+# 临时文件
+_check.js
+_patch_*.py
+*.pyc
+__pycache__/
+
+# 系统文件
+Thumbs.db
+.DS_Store
