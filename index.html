@@ -3286,6 +3286,36 @@ function addGenRecord(m, count, extra, platText, langText, sizeText){
   return rec.id;
 }
 /* 生成完成后更新历史记录：成功/部分成功写入已完成图片，失败/已取消清空 */
+/* 将图片URL转为base64（压缩到最大1024px，质量0.85），失败则返回原URL */
+async function urlToBase64(url){
+  if(!url || url.startsWith('data:')) return url;
+  try{
+    const resp = await fetch(url, {mode:'cors'});
+    if(!resp.ok) return url;
+    const blob = await resp.blob();
+    const img = await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=URL.createObjectURL(blob); });
+    const maxSide = 1024;
+    let w=img.width, h=img.height;
+    if(w>maxSide || h>maxSide){ const s=maxSide/Math.max(w,h); w=Math.round(w*s); h=Math.round(h*s); }
+    const canvas = document.createElement('canvas'); canvas.width=w; canvas.height=h;
+    const ctx = canvas.getContext('2d'); ctx.drawImage(img,0,0,w,h);
+    URL.revokeObjectURL(img.src);
+    return canvas.toDataURL('image/jpeg', 0.85);
+  }catch(e){ return url; }
+}
+/* 异步将记录中的图片URL转为base64并保存 */
+async function persistRecordImages(id){
+  const r = DB.find(x=>x.id===id); if(!r) return;
+  if(r.type === 'video') return; // 视频不转base64
+  if(!r.images || !r.images.length) return;
+  const converted = [];
+  for(let i=0;i<r.images.length;i++){
+    converted.push(await urlToBase64(r.images[i]));
+  }
+  r.images = converted;
+  try{ saveDB(); }catch(e){ console.warn('保存base64图片失败（可能localStorage容量不足）', e); }
+  renderHistory();
+}
 function updateGenRecord(id, urls, status, demo){
   const r = DB.find(x=>x.id===id); if(!r) return;
   if(status === '成功' || status === '部分成功'){
@@ -3299,6 +3329,9 @@ function updateGenRecord(id, urls, status, demo){
     r.images = [];
   }
   saveDB(); renderHistory();
+  if((status === '成功' || status === '部分成功') && urls && urls.length){
+    persistRecordImages(id); // 异步转base64永久保存
+  }
 }
 function fmtNow(){
   const d = new Date(), p = n=>String(n).padStart(2,'0');
@@ -3864,9 +3897,11 @@ function renderVideoFail(msg){
 function updateVideoRecord(id, urls, status){
   const r = DB.find(x=>x.id===id); if(!r) return;
   if(status==='成功' || status==='部分成功'){
-    r.status = status; r.images = urls && urls.length ? urls.slice() : [];
+    r.status = status;
+    r.videoUrl = urls && urls.length ? urls[0] : '';
+    r.images = urls && urls.length ? urls.slice() : [];
     r.count = r.images.length || (r.count||1);
-  } else { r.status = status; r.images = []; }
+  } else { r.status = status; r.images = []; r.videoUrl=''; }
   saveDB(); renderHistory();
 }
 function runVideoGen(){
@@ -5368,8 +5403,12 @@ let hisDetailIdx = 0;   // 详情当前图下标
 let hisDetailId = null; // 详情当前记录 id
 function hisThumb(r){
   if(r.status === '生成中') return '<div class="rec-thumb ph run"><span class="spin"></span></div>';
-  if(r.type==='video' && r.images && r.images.length){
-    return '<div class="rec-thumb rec-thumb-video" onclick="event.stopPropagation();toggleVideoThumb(this)"><video src="' + r.images[0] + '" muted preload="metadata" playsinline></video><span class="rec-thumb-play"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span></div>';
+  if(r.type==='video'){
+    const vsrc = r.videoUrl || (r.images && r.images.length ? r.images[0] : '');
+    if(vsrc){
+      return '<div class="rec-thumb rec-thumb-video" onclick="event.stopPropagation();toggleVideoThumb(this)"><video src="' + vsrc + '" muted preload="metadata" playsinline onerror="this.parentElement.innerHTML=\'<div class=\'rec-thumb ph\' style=\'display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text-faint)\'>视频已过期</div>\'"></video><span class="rec-thumb-play"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span></div>';
+    }
+    return '<div class="rec-thumb ph" style="display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text-faint)">视频已过期</div>';
   }
   if(r.images && r.images.length) return '<img class="rec-thumb" src="' + r.images[0] + '" alt="" onclick="event.stopPropagation();openHistoryDetail(\'' + r.id + '\')">';
   if(r.type==='video') return '<div class="rec-thumb ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="13" height="14" rx="2.5"/><path d="M16 10l5-3v10l-5-3"/></svg></div>';
@@ -5756,6 +5795,7 @@ function renderHistoryDetail(){
   const r = DB.find(x=>x.id===hisDetailId); if(!r) return;
   const isImage = r.type==='image' && r.images && r.images.length;
   const isVideo = r.type==='video';
+  const _videoSrc = r.videoUrl || (r.images && r.images.length ? r.images[0] : '');
   const total = r.images ? r.images.length : 0;
   let viewer;
   if(r.status === '生成中'){
