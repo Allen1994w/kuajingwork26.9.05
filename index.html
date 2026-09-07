@@ -7144,17 +7144,7 @@ function renderSysSettings(){
   const sizes=['1:1','4:5','3:4','16:9','9:16'], plats=['taobao','amazon','ozon','tiktok','dtc'], langs=['zh','en','ru','ja','de'];
   const ds = dataStats();
   $('#adminMain').innerHTML=`
-    <div class="panel"><div class="panel-head"><h3>默认生成设置</h3><span class="sub">Defaults</span></div>
-      <div class="panel-body"><div class="form-grid">
-        <div class="field"><div class="field-label">生图默认数量</div><input type="number" id="sf_imgcount" value="${sysCfg.imgCount}" min="1" max="12"></div>
-        <div class="field"><div class="field-label">视频默认数量</div><input type="number" id="sf_videocount" value="${sysCfg.videoCount}" min="1" max="6"></div>
-        <div class="field"><div class="field-label">默认图片尺寸</div><select id="sf_sizes">${sizes.map(s=>`<option ${(sysCfg.imgSizes||[]).indexOf(s)>-1?'selected':''}>${s}</option>`).join('')}</select></div>
-        <div class="field"><div class="field-label">默认平台</div><select id="sf_platform">${plats.map(p=>`<option ${sysCfg.defaultPlatform===p?'selected':''}>${p}</option>`).join('')}</select></div>
-        <div class="field"><div class="field-label">默认语言</div><select id="sf_lang">${langs.map(l=>`<option ${sysCfg.defaultLang===l?'selected':''}>${l}</option>`).join('')}</select></div>
-        <div class="field"><div class="field-label">单图上传上限 (MB)</div><input type="number" id="sf_upload" value="${sysCfg.maxUploadMB}" min="1" max="20"></div>
-      </div>
-      <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:14px;border-top:1px solid var(--border);margin-top:16px"><button class="btn btn-primary" onclick="saveSys()">保存设置</button></div></div></div>
-    <div class="panel" style="margin-top:16px"><div class="panel-head"><h3>联系方式设置</h3><span class="sub">前台「联系负责人」弹窗内容</span></div>
+    <div class="panel"><div class="panel-head"><h3>联系方式设置</h3><span class="sub">前台「联系负责人」弹窗内容</span></div>
       <div class="panel-body">
         <div class="form-grid" style="grid-template-columns:1fr 1fr">
           <div class="field"><div class="field-label">微信号</div><input id="sf_wechat" value="${(sysCfg.contact||{}).wechat||''}" placeholder="如：wx_xxx"></div>
@@ -7348,16 +7338,6 @@ function saveContact(){
   jsave(K_SYS,sysCfg);
   successToast('联系方式已保存');
 }
-function saveSys(){
-  sysCfg.imgCount=+$('#sf_imgcount').value||8;
-  sysCfg.videoCount=+$('#sf_videocount').value||3;
-  sysCfg.imgSizes=[$('#sf_sizes').value];
-  sysCfg.defaultPlatform=$('#sf_platform').value;
-  sysCfg.defaultLang=$('#sf_lang').value;
-  sysCfg.maxUploadMB=+$('#sf_upload').value||6;
-  jsave(K_SYS,sysCfg); toast('系统设置已保存');
-}
-
 initAccount();
 renderSideAccount();
 renderProfile();
