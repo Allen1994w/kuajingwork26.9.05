@@ -2952,17 +2952,14 @@ function selectMode(modeId){
   $('#studioSize').innerHTML = sizeOpts.map(o=>'<option value="' + o.i + '">' + o.s + '</option>').join('');
   $('#studioSize').value = m.defaultSize;
   $('#studioSize').dataset.default = m.defaultSize;
-  if(m.fixedCount){
-    $('#studioCount').style.display = 'none';
-    $('#studioCountFixed').style.display = 'inline-flex';
-    $('#studioCountFixed').textContent = m.fixedCount + ' 张（按技能包固定）';
-  }else{
-    $('#studioCount').style.display = 'block';
-    $('#studioCountFixed').style.display = 'none';
-    let o=''; for(let i=1;i<=m.countMax;i++) o+='<option value="' + i + '">' + i + ' 张</option>';
-    $('#studioCount').innerHTML = o;
-    $('#studioCount').value = m.defaultCount;
-  }
+  // 数量下拉：默认细分玩法默认数量/固定数量，但用户可自行选择（最多为玩法最大限制）
+  $('#studioCount').style.display = 'block';
+  $('#studioCountFixed').style.display = 'none';
+  const _maxN = m.fixedCount || m.countMax || 1;
+  const _defN = m.fixedCount || m.defaultCount || 1;
+  let o=''; for(let i=1;i<=_maxN;i++) o+='<option value="' + i + '">' + i + ' 张</option>';
+  $('#studioCount').innerHTML = o;
+  $('#studioCount').value = _defN;
   $('#studioPrompt').value = curPrompt();
   $('#refLimit').textContent = m.maxRef >= 9 ? '最多 9 张参考图' : '仅 ' + m.maxRef + ' 张';
   $('#colorField').style.display = m.needColor ? 'block' : 'none';
@@ -3081,7 +3078,7 @@ let studioTaskSeq = 0;              // 并发任务序号：结果区只展示�
 let pendingGen = {};                // recId -> {cancelled} 取消控制（结果区与历史列表共用）
 function runStudioGen(){
   const m = curMode;
-  const count = m.fixedCount || parseInt($('#studioCount').value,10) || 1;
+  const count = parseInt($('#studioCount').value,10) || m.fixedCount || 1;
   const btn = $('#studioGenBtn');
   // 积分扣除
   const extraForCost = ($('#studioExtra')&&$('#studioExtra').value)||'';
@@ -3214,7 +3211,8 @@ function buildGenPlan(m, count, finalPrompt, sizeText, extra, langD){
   }else{
     for(let j=0;j<count;j++) plan.push({ prompt: finalPrompt, size: sizeText });
   }
-  return plan;
+  // 用户可在玩法最大限制内自选数量：整套计划截断到所选张数（取前 N 张）
+  return plan.slice(0, count);
 }
 /* 取消生成：当前正在生成的图片完成后停止，后续未开始的停止 */
 function cancelGen(id){
@@ -6319,7 +6317,7 @@ function deductPoints(type, count, duration, prompt, packName, modeName){
 function updateImageCostHint(){
   const el=$('#imgCostHint'); if(!el) return;
   const m=curMode;
-  const count=m&&m.fixedCount?m.fixedCount:(parseInt($('#studioCount')&&$('#studioCount').value,10)||1);
+  const count=parseInt($('#studioCount')&&$('#studioCount').value,10)||1;
   const cost=calcImageCost(count);
   el.innerHTML='预计花费 <b style="color:var(--accent-strong)">'+cost+'</b> 积分（'+count+' 张 × '+((sysCfg&&sysCfg.imgCost)||1)+'积分）';
 }
