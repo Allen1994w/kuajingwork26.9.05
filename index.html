@@ -356,6 +356,22 @@ textarea{resize:vertical;min-height:86px;line-height:1.6}
 .wc-services span{font-size:11px;font-weight:600;color:var(--text-muted);background:#F3F4F6;padding:3px 9px;border-radius:5px}
 .services-contact{display:flex;align-items:center;justify-content:space-between;padding:20px 28px;background:#F0FDFA;border:1px solid #B2DFDB;border-radius:14px;margin-top:8px}
 .sc-text{font-size:14.5px;font-weight:600;color:#0F766E}
+.sb-contact-btn{background:#fff;color:#0F766E;font-weight:800;padding:11px 24px;border-radius:10px;font-size:14.5px;box-shadow:0 4px 14px rgba(0,0,0,.18);margin-left:28px;align-self:center;white-space:nowrap;border:none;cursor:pointer}
+.sb-contact-btn:hover{background:#F0FDFA;transform:translateY(-1px)}
+.warehouse-compact{display:flex;flex-direction:column;gap:10px}
+.wc-row{display:flex;align-items:stretch;gap:14px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:11px 16px;transition:box-shadow .2s}
+.wc-row:hover{box-shadow:0 4px 14px rgba(15,30,44,.07)}
+.wc-country{flex:0 0 120px;display:flex;flex-direction:column;justify-content:center;gap:3px;border-right:1px solid var(--border);padding-right:14px}
+.wc-flag{font-size:22px;line-height:1}
+.wc-cname{font-size:15px;font-weight:800;color:var(--ink-900)}
+.wc-cdesc{font-size:11px;color:var(--text-muted);line-height:1.3}
+.wc-cards{flex:1;display:flex;gap:10px;flex-wrap:wrap;align-items:stretch}
+.wc-card{flex:1 1 170px;min-width:150px;background:#F8FAFC;border:1px solid #E5EAF0;border-radius:10px;padding:9px 12px;display:flex;flex-direction:column;justify-content:center}
+.wc-card-name{font-size:14px;font-weight:700;color:var(--ink-900);margin-bottom:2px}
+.wc-card-region{font-size:11.5px;color:var(--text-muted);margin-bottom:5px}
+.wc-card-svc{font-size:10.5px;color:#0E9F6E;font-weight:600;line-height:1.4}
+.contact-qr{width:200px;height:200px;border-radius:12px;border:1px solid var(--border);display:block;margin:0 auto}
+.contact-qr-empty{width:200px;height:200px;border:2px dashed var(--border);border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:13px;margin:0 auto}
 
 /* ============ 数据报告 ============ */
 .chart-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:16px;margin-top:16px}
@@ -1619,125 +1635,50 @@ textarea.prompt-area{min-height:150px;font-size:12px;line-height:1.65;color:#2A3
             <div class="sb-stat"><div class="sb-num">10</div><div class="sb-label">全球仓库</div></div>
             <div class="sb-stat"><div class="sb-num">6</div><div class="sb-label">覆盖国家</div></div>
             <div class="sb-stat"><div class="sb-num">24h</div><div class="sb-label">极速出库</div></div>
+            <button class="sb-contact-btn" onclick="openContactModal()">联系负责人</button>
           </div>
         </div>
-        <div class="warehouse-section">
-          <div class="ws-country">
-            <div class="ws-flag">🇺🇸</div>
-            <div class="ws-country-name">美国</div>
-            <div class="ws-country-desc">美西/美中/美东三大区域覆盖，全美2-5天送达</div>
-          </div>
-          <div class="warehouse-grid">
-            <div class="warehouse-card">
-              <div class="wc-top"><span class="wc-region">美西</span><span class="wc-status">运营中</span></div>
-              <div class="wc-name">奇诺岗仓</div>
-              <div class="wc-addr">Chino, CA · 洛杉矶大都会区</div>
-              <div class="wc-services"><span>一件代发</span><span>移仓换标</span><span>FBA中转</span></div>
-            </div>
-            <div class="warehouse-card">
-              <div class="wc-top"><span class="wc-region">美中</span><span class="wc-status">运营中</span></div>
-              <div class="wc-name">休斯顿仓</div>
-              <div class="wc-addr">Houston, TX · 美国南部枢纽</div>
-              <div class="wc-services"><span>一件代发</span><span>移仓换标</span><span>FBA中转</span></div>
-            </div>
-            <div class="warehouse-card">
-              <div class="wc-top"><span class="wc-region">美东</span><span class="wc-status">运营中</span></div>
-              <div class="wc-name">纽约仓</div>
-              <div class="wc-addr">New York, NY · 美东核心商圈</div>
-              <div class="wc-services"><span>一件代发</span><span>移仓换标</span><span>FBA中转</span></div>
+        <div class="warehouse-compact">
+          <div class="wc-row">
+            <div class="wc-country"><span class="wc-flag">🇺🇸</span><span class="wc-cname">美国</span><span class="wc-cdesc">美西/美中/美东<br>全美2-5天送达</span></div>
+            <div class="wc-cards">
+              <div class="wc-card"><div class="wc-card-name">奇诺岗仓</div><div class="wc-card-region">美西 · Chino, CA</div><div class="wc-card-svc">一件代发 · 移仓换标 · FBA中转</div></div>
+              <div class="wc-card"><div class="wc-card-name">休斯顿仓</div><div class="wc-card-region">美中 · Houston, TX</div><div class="wc-card-svc">一件代发 · 移仓换标 · FBA中转</div></div>
+              <div class="wc-card"><div class="wc-card-name">纽约仓</div><div class="wc-card-region">美东 · New York, NY</div><div class="wc-card-svc">一件代发 · 移仓换标 · FBA中转</div></div>
             </div>
           </div>
-        </div>
-        <div class="warehouse-section">
-          <div class="ws-country">
-            <div class="ws-flag">🇨🇦</div>
-            <div class="ws-country-name">加拿大</div>
-            <div class="ws-country-desc">加拿大本土仓，覆盖加东加西主要城市</div>
-          </div>
-          <div class="warehouse-grid">
-            <div class="warehouse-card">
-              <div class="wc-top"><span class="wc-region">加拿大</span><span class="wc-status">运营中</span></div>
-              <div class="wc-name">加拿大仓</div>
-              <div class="wc-addr">Toronto, ON · 大多伦多地区</div>
-              <div class="wc-services"><span>一件代发</span><span>移仓换标</span><span>FBA中转</span></div>
+          <div class="wc-row">
+            <div class="wc-country"><span class="wc-flag">🇨🇦</span><span class="wc-cname">加拿大</span><span class="wc-cdesc">本土仓<br>覆盖加东加西</span></div>
+            <div class="wc-cards">
+              <div class="wc-card"><div class="wc-card-name">加拿大仓</div><div class="wc-card-region">多伦多 · Toronto, ON</div><div class="wc-card-svc">一件代发 · 移仓换标 · FBA中转</div></div>
             </div>
           </div>
-        </div>
-        <div class="warehouse-section">
-          <div class="ws-country">
-            <div class="ws-flag">🇬🇧</div>
-            <div class="ws-country-name">英国</div>
-            <div class="ws-country-desc">英国双仓布局，覆盖英格兰与威尔士</div>
-          </div>
-          <div class="warehouse-grid">
-            <div class="warehouse-card">
-              <div class="wc-top"><span class="wc-region">英格兰</span><span class="wc-status">运营中</span></div>
-              <div class="wc-name">曼彻斯特仓</div>
-              <div class="wc-addr">Manchester · 英国北部核心</div>
-              <div class="wc-services"><span>一件代发</span><span>移仓换标</span><span>FBA中转</span></div>
-            </div>
-            <div class="warehouse-card">
-              <div class="wc-top"><span class="wc-region">威尔士</span><span class="wc-status">运营中</span></div>
-              <div class="wc-name">康威仓</div>
-              <div class="wc-addr">Conwy · 威尔士地区</div>
-              <div class="wc-services"><span>一件代发</span><span>移仓换标</span><span>FBA中转</span></div>
+          <div class="wc-row">
+            <div class="wc-country"><span class="wc-flag">🇬🇧</span><span class="wc-cname">英国</span><span class="wc-cdesc">双仓布局<br>英格兰+威尔士</span></div>
+            <div class="wc-cards">
+              <div class="wc-card"><div class="wc-card-name">曼彻斯特仓</div><div class="wc-card-region">英格兰 · Manchester</div><div class="wc-card-svc">一件代发 · 移仓换标 · FBA中转</div></div>
+              <div class="wc-card"><div class="wc-card-name">康威仓</div><div class="wc-card-region">威尔士 · Conwy</div><div class="wc-card-svc">一件代发 · 移仓换标 · FBA中转</div></div>
             </div>
           </div>
-        </div>
-        <div class="warehouse-section">
-          <div class="ws-country">
-            <div class="ws-flag">🇩🇪</div>
-            <div class="ws-country-name">德国</div>
-            <div class="ws-country-desc">德国双仓布局，辐射欧盟核心市场</div>
-          </div>
-          <div class="warehouse-grid">
-            <div class="warehouse-card">
-              <div class="wc-top"><span class="wc-region">北威州</span><span class="wc-status">运营中</span></div>
-              <div class="wc-name">拉廷根仓</div>
-              <div class="wc-addr">Ratingen · 杜塞尔多夫大都会区</div>
-              <div class="wc-services"><span>一件代发</span><span>移仓换标</span><span>FBA中转</span></div>
-            </div>
-            <div class="warehouse-card">
-              <div class="wc-top"><span class="wc-region">柏林</span><span class="wc-status">运营中</span></div>
-              <div class="wc-name">柏林仓</div>
-              <div class="wc-addr">Berlin · 德国首都圈</div>
-              <div class="wc-services"><span>一件代发</span><span>移仓换标</span><span>FBA中转</span></div>
+          <div class="wc-row">
+            <div class="wc-country"><span class="wc-flag">🇩🇪</span><span class="wc-cname">德国</span><span class="wc-cdesc">双仓布局<br>辐射欧盟核心</span></div>
+            <div class="wc-cards">
+              <div class="wc-card"><div class="wc-card-name">拉廷根仓</div><div class="wc-card-region">北威州 · Ratingen</div><div class="wc-card-svc">一件代发 · 移仓换标 · FBA中转</div></div>
+              <div class="wc-card"><div class="wc-card-name">柏林仓</div><div class="wc-card-region">柏林 · Berlin</div><div class="wc-card-svc">一件代发 · 移仓换标 · FBA中转</div></div>
             </div>
           </div>
-        </div>
-        <div class="warehouse-section">
-          <div class="ws-country">
-            <div class="ws-flag">🇮🇹</div>
-            <div class="ws-country-name">意大利</div>
-            <div class="ws-country-desc">意大利本土仓，覆盖南欧市场</div>
-          </div>
-          <div class="warehouse-grid">
-            <div class="warehouse-card">
-              <div class="wc-top"><span class="wc-region">意大利</span><span class="wc-status">运营中</span></div>
-              <div class="wc-name">意大利仓</div>
-              <div class="wc-addr">Milan · 米兰大都会区</div>
-              <div class="wc-services"><span>一件代发</span><span>移仓换标</span><span>FBA中转</span></div>
+          <div class="wc-row">
+            <div class="wc-country"><span class="wc-flag">🇮🇹</span><span class="wc-cname">意大利</span><span class="wc-cdesc">本土仓<br>覆盖南欧市场</span></div>
+            <div class="wc-cards">
+              <div class="wc-card"><div class="wc-card-name">意大利仓</div><div class="wc-card-region">米兰 · Milan</div><div class="wc-card-svc">一件代发 · 移仓换标 · FBA中转</div></div>
             </div>
           </div>
-        </div>
-        <div class="warehouse-section">
-          <div class="ws-country">
-            <div class="ws-flag">🇪🇸</div>
-            <div class="ws-country-name">西班牙</div>
-            <div class="ws-country-desc">西班牙本土仓，覆盖伊比利亚半岛</div>
-          </div>
-          <div class="warehouse-grid">
-            <div class="warehouse-card">
-              <div class="wc-top"><span class="wc-region">西班牙</span><span class="wc-status">运营中</span></div>
-              <div class="wc-name">西班牙仓</div>
-              <div class="wc-addr">Madrid · 马德里大都会区</div>
-              <div class="wc-services"><span>一件代发</span><span>移仓换标</span><span>FBA中转</span></div>
+          <div class="wc-row">
+            <div class="wc-country"><span class="wc-flag">🇪🇸</span><span class="wc-cname">西班牙</span><span class="wc-cdesc">本土仓<br>伊比利亚半岛</span></div>
+            <div class="wc-cards">
+              <div class="wc-card"><div class="wc-card-name">西班牙仓</div><div class="wc-card-region">马德里 · Madrid</div><div class="wc-card-svc">一件代发 · 移仓换标 · FBA中转</div></div>
             </div>
           </div>
-        </div>
-        <div class="services-contact">
-          <div class="sc-text">需要海外仓服务？欢迎咨询定制方案</div>
-          <button class="btn btn-primary" onclick="toast('请联系客服获取海外仓报价方案')">立即咨询</button>
         </div>
       </div>
 
@@ -6415,6 +6356,7 @@ function initAccount(){
   sysCfg=jload(K_SYS,{ imgCount:8, videoCount:3, imgSizes:['1:1'], defaultPlatform:'taobao', defaultLang:'zh', maxUploadMB:6, pointRate:0.2, imgCost:1, videoCost:2, opsCosts:{'竞品分析':5,'买家心声':5,'选品自动化':10,'Listing优化':10} });
   if(!sysCfg.opsCosts || typeof sysCfg.opsCosts!=='object') sysCfg.opsCosts={};
   ['竞品分析','买家心声','选品自动化','Listing优化'].forEach(k=>{ if(!(sysCfg.opsCosts[k]>0)) sysCfg.opsCosts[k]=(k==='选品自动化'||k==='Listing优化')?10:5; });
+  if(!sysCfg.contact || typeof sysCfg.contact!=='object') sysCfg.contact={ wechat:'', qrCode:'' };
   packToggle=jload(K_PT,{ image:{}, video:{}, ops:{} });
 }
 
@@ -7103,6 +7045,18 @@ function renderSysSettings(){
           <span style="color:var(--danger);font-size:12.5px">导入将覆盖当前所有数据，操作不可撤销</span>
         </div>
         <div style="margin-top:10px;font-size:12px;color:var(--text-faint)">轻量备份：仅元数据+URL，文件小；完整备份：额外打包所有图片/视频原文件，文件较大但可永久归档</div>
+      </div></div>
+    <div class="panel" style="margin-top:16px"><div class="panel-head"><h3>联系方式设置</h3><span class="sub">前台「联系负责人」弹窗内容</span></div>
+      <div class="panel-body">
+        <div class="form-grid" style="grid-template-columns:1fr 1fr">
+          <div class="field"><div class="field-label">微信号</div><input id="sf_wechat" value="${(sysCfg.contact||{}).wechat||''}" placeholder="如：wx_xxx"></div>
+        </div>
+        <div class="field" style="margin-top:12px">
+          <div class="field-label">微信二维码图片</div>
+          <input type="file" id="sf_qrcode_file" accept="image/*" style="margin-bottom:10px" onchange="previewQrCode(this)">
+          <div id="sf_qrcode_preview_wrap">${(sysCfg.contact||{}).qrCode?'<img id="sf_qrcode_preview" src="'+(sysCfg.contact||{}).qrCode+'" style="width:140px;height:140px;border-radius:10px;border:1px solid var(--border);object-fit:cover">':'<div id="sf_qrcode_preview" style="width:140px;height:140px;border:2px dashed var(--border);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:12px">未上传</div>'}</div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:14px;border-top:1px solid var(--border);margin-top:16px"><button class="btn btn-primary" onclick="saveContact()">保存联系方式</button></div>
       </div></div>`;
 }
 function dataStats(){
@@ -7229,8 +7183,41 @@ async function exportFullBackup(){
     btn.disabled=false;btn.textContent='完整备份（含图片视频）';
   }
 }
+function openContactModal(){
+  const c=(sysCfg&&sysCfg.contact)||{};
+  const qr = c.qrCode ? '<img class="contact-qr" src="'+c.qrCode+'">' : '<div class="contact-qr-empty">暂未设置二维码</div>';
+  const wechat = c.wechat ? '<div style="font-size:13px;color:var(--text-muted);margin-top:16px">微信号</div><div style="font-size:22px;font-weight:800;color:var(--ink-900);margin:4px 0 14px;letter-spacing:1px">'+escHtml(c.wechat)+'</div><button class="btn btn-primary btn-sm" onclick="copyWechat()">复制微信号</button>' : '<div style="font-size:13px;color:var(--text-muted);margin-top:16px">暂未设置微信号</div>';
+  renderModal('联系负责人','扫码添加微信，获取海外仓定制方案','<div style="text-align:center;padding:8px 0">'+qr+wechat+'</div>',[{label:'关闭',cls:'btn btn-ghost',act:'close'}]);
+}
+function copyWechat(){
+  const c=(sysCfg&&sysCfg.contact)||{};
+  if(!c.wechat) return;
+  navigator.clipboard.writeText(c.wechat).then(()=>successToast('微信号已复制')).catch(()=>toast('复制失败，请手动复制'));
+}
+function previewQrCode(input){
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const wrap=document.getElementById('sf_qrcode_preview_wrap');
+    if(wrap) wrap.innerHTML='<img id="sf_qrcode_preview" src="'+e.target.result+'" style="width:140px;height:140px;border-radius:10px;border:1px solid var(--border);object-fit:cover">';
+  };
+  reader.readAsDataURL(file);
+}
+function saveContact(){
+  const wechat=($('#sf_wechat')?$('#sf_wechat').value:'').trim();
+  const img=$('#sf_qrcode_preview');
+  const qrCode=(img && img.tagName==='IMG' && img.src && img.src.startsWith('data:'))?img.src:'';
+  sysCfg.contact={ wechat:wechat, qrCode:qrCode };
+  jsave(K_SYS,sysCfg);
+  successToast('联系方式已保存');
+}
 function saveSys(){
-  sysCfg={ imgCount:+$('#sf_imgcount').value||8, videoCount:+$('#sf_videocount').value||3, imgSizes:[$('#sf_sizes').value], defaultPlatform:$('#sf_platform').value, defaultLang:$('#sf_lang').value, maxUploadMB:+$('#sf_upload').value||6 };
+  sysCfg.imgCount=+$('#sf_imgcount').value||8;
+  sysCfg.videoCount=+$('#sf_videocount').value||3;
+  sysCfg.imgSizes=[$('#sf_sizes').value];
+  sysCfg.defaultPlatform=$('#sf_platform').value;
+  sysCfg.defaultLang=$('#sf_lang').value;
+  sysCfg.maxUploadMB=+$('#sf_upload').value||6;
   jsave(K_SYS,sysCfg); toast('系统设置已保存');
 }
 
