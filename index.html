@@ -511,7 +511,7 @@ textarea{resize:vertical;min-height:86px;line-height:1.6}
 .sc-enter .go{display:inline-flex;align-items:center;gap:6px;color:var(--accent-strong);font-weight:600;font-size:13px;transition:gap .15s}
 .sc-enter .go svg{width:15px;height:15px}
 .skill-card:hover .sc-enter .go{gap:9px}
-.studio-back{display:flex;align-items:center;gap:7px;color:var(--text-muted);font-size:13px;font-weight:600;cursor:pointer;background:var(--bg);padding:10px 26px;border-bottom:1px solid var(--border);transition:color .15s;flex:0 0 auto}
+.studio-back{display:flex;align-items:center;gap:7px;color:var(--text-muted);font-size:13px;font-weight:600;cursor:pointer;background:var(--bg);padding:10px 26px;border-bottom:1px solid var(--border);transition:color .15s;flex:0 0 auto;position:sticky;top:0;z-index:20}
 .studio-back:hover{color:var(--accent-strong)}
 .studio-back svg{width:16px;height:16px}
 .mode-hint{background:#F7FAFC;border:1px solid var(--border);border-left:3px solid var(--accent-strong);border-radius:9px;padding:10px 12px;margin-bottom:14px;font-size:12.5px;line-height:1.75;color:var(--text-muted)}
@@ -563,13 +563,11 @@ textarea{resize:vertical;min-height:86px;line-height:1.6}
 .hd-report a:hover{text-decoration:underline}
 .hd-report .md-blank{height:6px}
 .report-empty{text-align:center;color:#94A3B8;padding:30px 0;font-size:13px}
-.rec-thumb.ops-thumb{display:flex;align-items:center;justify-content:center;flex-direction:column;background:linear-gradient(135deg,#E7F7EF,#D1FAE5);position:relative;cursor:pointer}
-.rec-thumb.ops-thumb:hover{outline:2px solid #0E9488;outline-offset:-2px}
-.ops-thumb-char{font-size:22px;font-weight:700;color:#0E9488;line-height:1;letter-spacing:1px}
-.ops-thumb-tag{position:absolute;top:6px;right:6px;background:rgba(14,148,136,.14);color:#0F766E;font-size:10px;padding:2px 7px;border-radius:10px;font-weight:600}
-.ops-thumb-doc{width:26px;height:30px;background:#fff;border:2px solid #0E9488;border-radius:5px;position:relative;margin-bottom:5px}
-.ops-thumb-doc:before{content:'';position:absolute;top:-2px;right:-2px;border-width:0 0 9px 9px;border-style:solid;border-color:#0E9488 transparent transparent transparent}
-.ops-thumb-doc:after{content:'';position:absolute;left:5px;top:11px;width:12px;height:2px;background:#0E9488;box-shadow:0 5px 0 rgba(14,148,136,.6)}
+.rec-thumb.ops-thumb{display:flex;align-items:center;justify-content:center;flex-direction:column;background:#E7EEFA;position:relative;cursor:pointer;gap:1px}
+.rec-thumb.ops-thumb:hover{outline:2px solid var(--accent-strong, #0E9488);outline-offset:-2px}
+.ops-thumb-icon{width:22px;height:22px;display:flex;align-items:center;justify-content:center}
+.ops-thumb-icon svg{width:22px;height:22px}
+.ops-thumb-name{font-size:10px;font-weight:700;line-height:1.15;text-align:center;letter-spacing:.2px}
 .mc-list{margin-top:10px;display:flex;flex-direction:column;gap:7px}
 .mc-list-title{font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:2px}
 .mc-list-item{display:flex;align-items:center;gap:8px;background:#F8FAFC;border:1px solid #E5EAF0;border-radius:9px;padding:8px 10px;flex-wrap:wrap}
@@ -5599,11 +5597,16 @@ function hisThumb(r){
   if(r.images && r.images.length) return '<img class="rec-thumb" src="' + r.images[0] + '" alt="" onclick="event.stopPropagation();openHistoryDetail(\'' + r.id + '\')">';
   if(r.type==='video') return '<div class="rec-thumb ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="13" height="14" rx="2.5"/><path d="M16 10l5-3v10l-5-3"/></svg></div>';
   if(r.type==='ops'){
-    const t = String(r.mode||r.title||'运营').replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g,'').slice(0,2) || '报';
-    return '<div class="rec-thumb ops-thumb" onclick="event.stopPropagation();openHistoryDetail(\'' + r.id + '\')">' +
-      '<div class="ops-thumb-doc"></div>' +
-      '<span class="ops-thumb-char">' + escHtml(t) + '</span>' +
-      '<span class="ops-thumb-tag">报告</span></div>';
+    const OP_THUMB = {
+      '竞品分析': { bg:'#E7EEFA', color:'#3B82F6', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/><path d="M8 10.5h5M10.5 8v5"/></svg>' },
+      '买家心声': { bg:'#FDEBF3', color:'#DB2777', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H9l-4.5 4.5V5.5z"/><path d="M8.5 8h7M8.5 11.5h4.5"/></svg>' },
+      '选品自动化': { bg:'#E7F7EF', color:'#0E9F6E', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5h16l-6.2 7.4V19l-3.6 2v-8.6L4 5z"/></svg>' },
+      'Listing优化': { bg:'#FFF4E0', color:'#D97706', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="3" width="16" height="18" rx="2.5"/><path d="M8.5 8h7M8.5 11.5h7M8.5 15h4"/></svg>' }
+    };
+    const m = OP_THUMB[r.mode] || { bg:'#F0FDFA', color:'#0E9488', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h10M4 18h16"/></svg>' };
+    return '<div class="rec-thumb ops-thumb" style="background:' + m.bg + '" onclick="event.stopPropagation();openHistoryDetail(\'' + r.id + '\')">' +
+      '<span class="ops-thumb-icon" style="color:' + m.color + '">' + m.icon + '</span>' +
+      '<span class="ops-thumb-name" style="color:' + m.color + '">' + escHtml(r.mode||'运营') + '</span></div>';
   }
   return '<div class="rec-thumb ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="9.5" r="1.6"/><path d="M3 17l5-4.5 4 3.5 3.5-3L21 17"/></svg></div>';
 }
