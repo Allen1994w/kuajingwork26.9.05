@@ -6710,7 +6710,12 @@ function openUserForm(id){
   curUserFormId=id; const u=id?users.find(x=>x.id===id):null; const isNew=!u;
   renderModal(isNew?'新增用户':'编辑用户', isNew?'后台帮注册账号并设置有效期':'修改用户信息',`
     <div class="field"><div class="field-label">昵称</div><input id="uf_name" value="${u?u.name:''}"></div>
-    <div class="field"><div class="field-label">邮箱</div><input id="uf_email" value="${u?u.email:''}"></div>
+    <div class="field"><div class="field-label">邮箱 <span style="color:var(--danger)">*</span></div><input id="uf_email" value="${u?u.email:''}" placeholder="请输入邮箱"></div>
+    <div class="field"><div class="field-label">密码 <span style="color:var(--text-faint);font-weight:400">（不填默认 kj123456）</span></div>
+      <div style="display:flex;gap:8px">
+        <input id="uf_password" type="password" value="${u?(u.password||''):''}" placeholder="kj123456" style="flex:1">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="togglePwdVisibility('uf_password',this)" style="flex-shrink:0;min-width:60px">显示</button>
+      </div></div>
     <div class="field"><div class="field-label">角色</div><select id="uf_role"><option value="member" ${u&&u.role==='member'?'selected':''}>会员</option><option value="admin" ${u&&u.role==='admin'?'selected':''}>管理员</option></select></div>
     <div class="field"><div class="field-label">账号有效期</div><select id="uf_expire"><option value="permanent" ${u&&u.expire==='permanent'?'selected':''}>永久</option><option value="30">30 天</option><option value="90" ${u&&u.expire!=='permanent'?'selected':''}>90 天</option><option value="365">365 天</option></select></div>
     <div class="field"><div class="field-label">初始积分</div><input type="number" id="uf_points" value="${u?u.points:100}" ${isNew?'':'disabled'}></div>
@@ -6719,12 +6724,20 @@ function openUserForm(id){
 }
 function saveUserForm(){
   const name=($('#uf_name').value||'').trim()||'未命名', email=$('#uf_email').value.trim(), role=$('#uf_role').value;
+  if(!email){ toast('邮箱为必填项'); return; }
   let expire=$('#uf_expire').value;
   if(expire!=='permanent') expire=fmtDate(addDays(+expire));
   const points=parseInt($('#uf_points').value)||0, note=$('#uf_note').value.trim();
-  if(curUserFormId){ const u=users.find(x=>x.id===curUserFormId); if(u){ u.name=name;u.email=email;u.role=role;u.expire=expire;if(note)u.note=note; } }
-  else { users.push({ id:'u'+Date.now(), name, avatarChar:name.charAt(0), email, role, points, expire, perms:role==='admin'?'all':[], createdAt:fmtDate(new Date()), note }); }
+  const password=($('#uf_password').value||'').trim()||'kj123456';
+  if(curUserFormId){ const u=users.find(x=>x.id===curUserFormId); if(u){ u.name=name;u.email=email;u.password=password;u.role=role;u.expire=expire;if(note)u.note=note; } }
+  else { users.push({ id:'u'+Date.now(), name, avatarChar:name.charAt(0), email, password, role, points, expire, perms:role==='admin'?'all':[], createdAt:fmtDate(new Date()), note }); }
   jsave(K_USERS,users); closeModal(); renderUsers(); toast(curUserFormId?'已保存修改':'已创建账号');
+}
+function togglePwdVisibility(inputId, btn){
+  const el=document.getElementById(inputId);
+  if(!el) return;
+  if(el.type==='password'){ el.type='text'; btn.textContent='隐藏'; }
+  else { el.type='password'; btn.textContent='显示'; }
 }
 function openPermForm(id){
   curUserFormId=id; const u=users.find(x=>x.id===id); if(!u) return;
