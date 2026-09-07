@@ -563,6 +563,21 @@ textarea{resize:vertical;min-height:86px;line-height:1.6}
 .hd-report a:hover{text-decoration:underline}
 .hd-report .md-blank{height:6px}
 .report-empty{text-align:center;color:#94A3B8;padding:30px 0;font-size:13px}
+.rec-thumb.ops-thumb{display:flex;align-items:center;justify-content:center;flex-direction:column;background:linear-gradient(135deg,#E7F7EF,#D1FAE5);position:relative;cursor:pointer}
+.rec-thumb.ops-thumb:hover{outline:2px solid #0E9488;outline-offset:-2px}
+.ops-thumb-char{font-size:22px;font-weight:700;color:#0E9488;line-height:1;letter-spacing:1px}
+.ops-thumb-tag{position:absolute;top:6px;right:6px;background:rgba(14,148,136,.14);color:#0F766E;font-size:10px;padding:2px 7px;border-radius:10px;font-weight:600}
+.ops-thumb-doc{width:26px;height:30px;background:#fff;border:2px solid #0E9488;border-radius:5px;position:relative;margin-bottom:5px}
+.ops-thumb-doc:before{content:'';position:absolute;top:-2px;right:-2px;border-width:0 0 9px 9px;border-style:solid;border-color:#0E9488 transparent transparent transparent}
+.ops-thumb-doc:after{content:'';position:absolute;left:5px;top:11px;width:12px;height:2px;background:#0E9488;box-shadow:0 5px 0 rgba(14,148,136,.6)}
+.mc-list{margin-top:10px;display:flex;flex-direction:column;gap:7px}
+.mc-list-title{font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:2px}
+.mc-list-item{display:flex;align-items:center;gap:8px;background:#F8FAFC;border:1px solid #E5EAF0;border-radius:9px;padding:8px 10px;flex-wrap:wrap}
+.mc-list-item.active{background:var(--bg-soft, #F0FDFA);border-color:#0E9488;box-shadow:0 0 0 1px rgba(14,148,136,.25)}
+.mc-li-name{font-weight:600;font-size:13px;color:var(--ink-900,#0F172A)}
+.mc-li-ep{font-size:11.5px;color:var(--text-muted,#6B7280);max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mc-li-badge{margin-left:auto}
+.mc-add-btn{margin-top:8px;align-self:flex-start}
 .hd-nav{position:absolute;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.14);border:none;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;z-index:2}
 .hd-nav:hover{background:rgba(255,255,255,.28)}
 .hd-nav.prev{left:14px}.hd-nav.next{right:14px}
@@ -5583,7 +5598,13 @@ function hisThumb(r){
   }
   if(r.images && r.images.length) return '<img class="rec-thumb" src="' + r.images[0] + '" alt="" onclick="event.stopPropagation();openHistoryDetail(\'' + r.id + '\')">';
   if(r.type==='video') return '<div class="rec-thumb ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="13" height="14" rx="2.5"/><path d="M16 10l5-3v10l-5-3"/></svg></div>';
-  if(r.type==='ops') return '<div class="rec-thumb ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/></svg></div>';
+  if(r.type==='ops'){
+    const t = String(r.mode||r.title||'运营').replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g,'').slice(0,2) || '报';
+    return '<div class="rec-thumb ops-thumb" onclick="event.stopPropagation();openHistoryDetail(\'' + r.id + '\')">' +
+      '<div class="ops-thumb-doc"></div>' +
+      '<span class="ops-thumb-char">' + escHtml(t) + '</span>' +
+      '<span class="ops-thumb-tag">报告</span></div>';
+  }
   return '<div class="rec-thumb ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="9.5" r="1.6"/><path d="M3 17l5-4.5 4 3.5 3.5-3L21 17"/></svg></div>';
 }
 function toggleVideoThumb(el){
@@ -6028,15 +6049,70 @@ function copyReport(id){
 }
 function downloadReport(id){
   const r = DB.find(x=>x.id===id); if(!r || !r.report) return;
-  const txt = r.report;
-  const name = (r.mode || '运营报告') + '_' + (r.time || Date.now()).toString().replace(/[\/:]/g,'-') + '.md';
-  const blob = new Blob(['\ufeff' + txt], {type: 'text/markdown;charset=utf-8'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = name;
-  document.body.appendChild(a); a.click();
-  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 800);
-  successToast('报告已下载');
+  const title = (r.title || r.mode || '运营报告');
+  const bodyHtml = renderMarkdownHtml(r.report);
+  const html = '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<title>' + escHtml(title) + '</title>' +
+    '<style>' +
+    'body{margin:0;background:#EEF2F6;font-family:"PingFang SC","Microsoft YaHei",-apple-system,Segoe UI,Roboto,sans-serif;padding:28px 16px}' +
+    '.page{max-width:860px;margin:0 auto}' +
+    '.page-head{background:linear-gradient(135deg,#0E9488,#115E59);color:#fff;border-radius:14px 14px 0 0;padding:20px 28px}' +
+    '.page-head h1{margin:0;font-size:20px}' +
+    '.page-head div{opacity:.85;font-size:12.5px;margin-top:6px}' +
+    '.hd-report{background:#fff;border:1px solid #E5EAF0;border-radius:0 0 14px 14px;padding:26px 30px;font-size:14px;line-height:1.75;color:#1F2937}' +
+    '.hd-report h1{font-size:20px;margin:6px 0 12px;color:#0F172A;border-bottom:2px solid #0E9488;padding-bottom:8px}' +
+    '.hd-report h2{font-size:17px;margin:18px 0 8px;color:#0F172A;padding-left:10px;border-left:4px solid #0E9488}' +
+    '.hd-report h3{font-size:15px;margin:14px 0 6px;color:#134E4A}' +
+    '.hd-report h4{font-size:14px;margin:12px 0 6px;color:#134E4A}' +
+    '.hd-report p{margin:6px 0}' +
+    '.hd-report strong{color:#0E7490}' +
+    '.hd-report ul,.hd-report ol{margin:6px 0 6px 4px;padding-left:22px}' +
+    '.hd-report li{margin:3px 0}' +
+    '.hd-report blockquote{margin:10px 0;padding:8px 14px;background:#F0FDFA;border-left:4px solid #2DD4BF;border-radius:0 8px 8px 0;color:#134E4A}' +
+    '.hd-report pre.md-code{background:#0F172A;color:#E2E8F0;padding:12px 14px;border-radius:8px;overflow:auto;font-size:12.5px;line-height:1.55;margin:10px 0}' +
+    '.hd-report code{background:#E6F0F2;color:#0F766E;padding:1px 6px;border-radius:4px;font-size:12.5px}' +
+    '.hd-report pre.md-code code{background:transparent;color:#E2E8F0;padding:0}' +
+    '.hd-report .md-table-wrap{overflow-x:auto;margin:10px 0;border-radius:8px;border:1px solid #E5EAF0}' +
+    '.hd-report table{border-collapse:collapse;width:100%;font-size:13px;min-width:420px}' +
+    '.hd-report th{background:#F0FDFA;color:#0F766E;font-weight:600;text-align:left}' +
+    '.hd-report th,.hd-report td{border:1px solid #E5EAF0;padding:7px 10px;vertical-align:top}' +
+    '.hd-report tr:nth-child(even) td{background:#FAFCFD}' +
+    '.hd-report hr{border:none;border-top:1px dashed #D6DEE6;margin:12px 0}' +
+    '.hd-report a{color:#0E9488;text-decoration:none}' +
+    '.hd-report .md-blank{height:6px}' +
+    '@media print{body{background:#fff;padding:0}.page-head{border-radius:0}}' +
+    '</style></head><body><div class="page">' +
+    '<div class="page-head"><h1>' + escHtml(title) + '</h1><div>' + escHtml(r.mode||'') + ' · ' + escHtml(r.time||'') + '</div></div>' +
+    bodyHtml +
+    '</div></body></html>';
+  const name = (r.mode || '运营报告') + '_' + (r.time || Date.now()).toString().replace(/[\/:]/g,'-') + '.html';
+  const blob = new Blob(['\ufeff' + html], {type: 'text/html;charset=utf-8'});
+  // 优先弹出系统「另存为」选择保存位置（桌面等），不支持则回退浏览器默认下载
+  const viaPicker = async ()=>{
+    if(window.showSaveFilePicker){
+      try{
+        const handle = await window.showSaveFilePicker({ suggestedName: name, types:[{ description:'HTML 报告', accept:{'text/html':['.html']} }] });
+        const w = await handle.createWritable();
+        await w.write(blob);
+        await w.close();
+        return true;
+      }catch(e){
+        if(e && e.name === 'AbortError') return true;
+        return false;
+      }
+    }
+    return false;
+  };
+  viaPicker().then(ok=>{
+    if(ok){ successToast('HTML 报告已保存'); return; }
+    const obj = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = obj; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(obj), 5000);
+    successToast('HTML 报告已下载');
+  });
 }
 /* 一键复制提示词（图片/视频/运营通用） */
 function copyPrompt(id){
@@ -6223,7 +6299,7 @@ function initCharts(){
 const K_USERS='cbe_users_v1', K_ME='cbe_me_v1', K_ORDERS='cbe_orders_v1', K_CODES='cbe_codes_v1',
       K_PLANS='cbe_plans_v1', K_MODEL='cbe_model_v1', K_SYS='cbe_sys_v1', K_PT='cbe_packtoggle_v1';
 var users=[], orders=[], codes=[], plans=[], modelCfg={}, sysCfg={}, packToggle={}, me=null;
-var curUserFormId=null, adminSec='users', packTab='image', admUserQ='', admHisQ='', admHisUser='all', admHisFilter='all', curModelEditKey=null, admHisPage=1, admHisPageSize=20;
+var curUserFormId=null, adminSec='users', packTab='image', admUserQ='', admHisQ='', admHisUser='all', admHisFilter='all', curModelEditKey=null, curModelEditIdx=-1, curModelEditOld=null, admHisPage=1, admHisPageSize=20;
 
 function jload(k,d){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):d; }catch(e){ return d; } }
 function jsave(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){ toast('存储失败（容量不足）'); } }
@@ -6309,6 +6385,18 @@ function initAccount(){
   if(!(modelCfg&&modelCfg.text&&modelCfg.image&&modelCfg.video)){
     modelCfg={ text:{ provider:'seedream', model:'seedream-4.5', endpoint:'https://api.volcengine.com/v1/chat', apiKey:'sk-****', status:'on' }, image:{ provider:'xinghe', model:'xinghe-wanneng-3.0', endpoint:'https://api.xinghe.example.com/v1/generate-image', apiKey:'sk-****', status:'on' }, video:{ provider:'seedance', model:'seedance-2.0', endpoint:'https://api.volcengine.com/v1/video', apiKey:'sk-****', status:'off' } };
   }
+  ['text','image','video'].forEach(function(k){
+    const lk = k + 'List';
+    if(!modelCfg[lk] || !modelCfg[lk].length){
+      modelCfg[lk] = modelCfg[k] ? [Object.assign({ name: MODEL_META[k].name + ' 默认', status: modelCfg[k].status || 'off' }, modelCfg[k])] : [];
+    } else {
+      modelCfg[lk].forEach(function(m){ if(!m.name) m.name = MODEL_META[k].name + ' ' + ((modelCfg[lk].indexOf(m)||0)+1); });
+      // 同步激活项与列表（避免列表被手工改乱后不同步）
+      if(!modelCfg[k] || !modelCfg[lk].some(function(m){ return m===modelCfg[k]; })){
+        modelCfg[k] = modelCfg[lk][0];
+      }
+    }
+  });
   sysCfg=jload(K_SYS,{ imgCount:8, videoCount:3, imgSizes:['1:1'], defaultPlatform:'taobao', defaultLang:'zh', maxUploadMB:6, pointRate:0.2, imgCost:1, videoCost:2 });
   packToggle=jload(K_PT,{ image:{}, video:{}, ops:{} });
 }
@@ -6727,24 +6815,54 @@ function modelFormHTML(key, mc){
       <div class="field" style="grid-column:1/-1"><div class="s-desc" style="margin-top:4px">接口地址固定为 <code>https://mcp.sorftime.com</code>，无需填写。密钥使用服务器主密钥加密保存。</div></div>
     </div>`;
   }
+  const nm = (mc&&mc.name) || '';
   return `<div class="form-grid">
+    <div class="field" style="grid-column:1/-1"><div class="field-label">模型名称（用于列表区分）</div><input id="mf_${key}_name" value="${nm}" placeholder="如：火山豆包Turbo / 星河生图"></div>
     <div class="field" style="grid-column:1/-1"><div class="field-label">接口地址（链接）</div><input id="mf_${key}_endpoint" value="${e}" placeholder="https://api.example.com/v1/..."></div>
     <div class="field" style="grid-column:1/-1"><div class="field-label">API 秘钥</div><input id="mf_${key}_key" type="password" value="${k}"></div>
     <div class="field"><div class="field-label">接入状态</div><select id="mf_${key}_status"><option value="on" ${s==='on'?'selected':''}>已接入</option><option value="off" ${s==='off'?'selected':''}>未接入</option></select></div>
   </div>`;
 }
 function renderModels(){
+  ['text','image','video'].forEach(k=>{
+    const lk=k+'List', list=modelCfg[lk];
+    if(list && list.length){
+      let hit = list.find(m=>m===modelCfg[k]);
+      if(!hit && modelCfg[k]) hit = list.find(m=>m.endpoint===modelCfg[k].endpoint && m.apiKey===modelCfg[k].apiKey);
+      if(hit) modelCfg[k] = hit;
+      else modelCfg[k] = list[0];
+    }
+  });
   $('#adminMain').innerHTML = '<div class="model-card-list">' + ['text','image','video','sorftime'].map(key=>{
     const mc=modelCfg[key]||{}, mt=MODEL_META[key], col=mt.color;
     const on=mc.status==='on';
+    const isList = key!=='sorftime';
+    const list = isList ? (modelCfg[key+'List']||[]) : null;
+    let listHtml = '';
+    if(list){
+      listHtml = '<div class="mc-list">' + (list.length ? '<div class="mc-list-title">已配置 ' + list.length + ' 个模型：</div>' : '') +
+        list.map((m, i)=>{
+          const active = m===mc;
+          const ep = (m.endpoint||'未配置接口地址').replace(/^https?:\/\//,'').replace(/\/$/,'');
+          return '<div class="mc-list-item' + (active?' active':'') + '">' +
+            '<span class="mc-li-name">' + escHtml(m.name||(mt.name+' '+(i+1))) + '</span>' +
+            (active ? '<span class="badge ok mc-li-badge">当前</span>' : '<button class="btn btn-ghost btn-sm mc-li-badge" onclick="switchModelInList(\'' + key + '\',' + i + ')">设为当前</button>') +
+            '<span class="mc-li-ep">' + escHtml(ep) + '</span>' +
+            '<button class="btn btn-ghost btn-sm" onclick="editModelInList(\'' + key + '\',' + i + ')">编辑</button>' +
+            (list.length>1 ? '<button class="btn btn-ghost btn-sm" onclick="delModelInList(\'' + key + '\',' + i + ')">删除</button>' : '') +
+            '</div>';
+        }).join('') + '</div>' +
+        '<button class="btn btn-soft btn-sm mc-add-btn" onclick="addModelInList(\'' + key + '\')">+ 添加模型</button>';
+    }
     return `<div class="model-card">
       <div class="mc-icon" style="background:${col[0]};color:${col[1]}">${mt.icon}</div>
       <div class="mc-main">
         <div class="mc-name">${mt.name} <span class="badge ${on?'ok':'off'}">${on?'已接入':'未接入'}</span></div>
         <div class="mc-sub">${mt.sub}</div>
-        <div class="mc-endpoint">${mc.endpoint||'未配置接口地址'}</div>
+        <div class="mc-endpoint">当前：${escHtml(mc.name?mc.name+' · ':'')}${escHtml(mc.endpoint||'未配置接口地址')}</div>
+        ${listHtml}
       </div>
-      <button class="btn btn-soft btn-sm" onclick="openModelEdit('${key}')">编辑</button>
+      <button class="btn btn-soft btn-sm" onclick="openModelEdit('${key}')">编辑当前</button>
     </div>`;
   }).join('') + '</div>' +
   `<div class="panel" style="margin-top:16px"><div class="panel-head"><h3>接口说明</h3><span class="sub">Integration Guide</span></div>
@@ -6772,8 +6890,8 @@ function renderModels(){
   </div>`;
 }
 function openModelEdit(key){
-  curModelEditKey=key;
-  renderModal(MODEL_META[key].name+' · 编辑配置', MODEL_META[key].sub, modelFormHTML(key, modelCfg[key]),
+  curModelEditKey=key; curModelEditIdx=-1; curModelEditOld=modelCfg[key]||{};
+  renderModal(MODEL_META[key].name+' · 编辑当前配置', MODEL_META[key].sub, modelFormHTML(key, modelCfg[key]),
     [{label:'取消',cls:'btn btn-ghost',act:'close'},{label:'测试连接',cls:'btn btn-ghost',act:'testCurModel'},{label:'保存配置',cls:'btn btn-primary',act:'saveCurModel'}]);
 }
 function readModelPanel(key){
@@ -6782,13 +6900,52 @@ function readModelPanel(key){
     const newKey=$('#mf_'+key+'_key').value.trim();
     return { endpoint:'https://mcp.sorftime.com', apiKey:newKey||old.apiKey||'', status:$('#mf_'+key+'_status').value };
   }
-  return { provider:old.provider||'xinghe', model:old.model||'', endpoint:$('#mf_'+key+'_endpoint').value.trim(), apiKey:$('#mf_'+key+'_key').value.trim(), status:$('#mf_'+key+'_status').value };
+  const nmEl = $('#mf_'+key+'_name');
+  return { name:(nmEl?nmEl.value.trim():'') || old.name || (MODEL_META[key].name + ' 模型'), provider:old.provider||'xinghe', model:old.model||'', endpoint:$('#mf_'+key+'_endpoint').value.trim(), apiKey:$('#mf_'+key+'_key').value.trim(), status:$('#mf_'+key+'_status').value };
 }
 function saveCurModel(){
   if(!curModelEditKey) return;
-  modelCfg[curModelEditKey]=readModelPanel(curModelEditKey);
+  const key=curModelEditKey, cfg=readModelPanel(key);
+  const list = modelCfg[key+'List'];
+  if(curModelEditIdx>=0 && list && list[curModelEditIdx]){
+    list[curModelEditIdx]=cfg;
+    if(modelCfg[key]===curModelEditOld || (curModelEditOld && modelCfg[key].endpoint===curModelEditOld.endpoint && modelCfg[key].apiKey===curModelEditOld.apiKey)) modelCfg[key]=cfg; // 编辑的是当前激活项则同步
+  } else {
+    modelCfg[key]=cfg;
+    if(list && list.length){
+      const idx=list.indexOf(curModelEditOld);
+      if(idx>-1) list[idx]=cfg; else list.push(cfg);
+    } else { modelCfg[key+'List']=[cfg]; }
+  }
   jsave(K_MODEL,modelCfg); closeModal(); renderModels();
-  toast(MODEL_META[curModelEditKey].name+' 配置已保存，生图/生成将按此生效');
+  successToast(MODEL_META[key].name+' 配置已保存并生效');
+}
+function switchModelInList(key, idx){
+  const list=modelCfg[key+'List']; if(!list||!list[idx]) return;
+  modelCfg[key]=list[idx];
+  jsave(K_MODEL,modelCfg); renderModels();
+  successToast('已切换为「'+(list[idx].name||MODEL_META[key].name)+'」');
+}
+function editModelInList(key, idx){
+  const list=modelCfg[key+'List']; if(!list||!list[idx]) return;
+  curModelEditKey=key; curModelEditIdx=idx; curModelEditOld=list[idx];
+  renderModal(MODEL_META[key].name+' · 编辑模型', (MODEL_META[key].sub||''), modelFormHTML(key, list[idx]),
+    [{label:'取消',cls:'btn btn-ghost',act:'close'},{label:'测试连接',cls:'btn btn-ghost',act:'testCurModel'},{label:'保存配置',cls:'btn btn-primary',act:'saveCurModel'}]);
+}
+function delModelInList(key, idx){
+  const list=modelCfg[key+'List']; if(!list||list.length<=1){ toast('至少保留一个模型配置'); return; }
+  if(!confirm('确定删除该模型配置？')) return;
+  const removed=list[idx];
+  list.splice(idx,1);
+  if(modelCfg[key]===removed) modelCfg[key]=list[0]; // 删除当前项则自动切第一个
+  jsave(K_MODEL,modelCfg); renderModels();
+  toast('已删除模型配置');
+}
+function addModelInList(key){
+  const base={ name:MODEL_META[key].name+' '+( (modelCfg[key+'List']||[]).length + 1 ), provider:'xinghe', model:'', endpoint:'', apiKey:'', status:'off' };
+  curModelEditKey=key; curModelEditIdx=-1; curModelEditOld=null;
+  renderModal(MODEL_META[key].name+' · 添加模型', '新增一个模型配置，保存后自动设为当前', modelFormHTML(key, base),
+    [{label:'取消',cls:'btn btn-ghost',act:'close'},{label:'测试连接',cls:'btn btn-ghost',act:'testCurModel'},{label:'保存配置',cls:'btn btn-primary',act:'saveCurModel'}]);
 }
 function saveModel(){
   ['text','image','video'].forEach(k=>{ if(document.getElementById('mf_'+k+'_provider')) modelCfg[k]=readModelPanel(k); });
