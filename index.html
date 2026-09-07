@@ -1243,7 +1243,7 @@ textarea.prompt-area{min-height:150px;font-size:12px;line-height:1.65;color:#2A3
                   </div>
                 </div>
                 <div class="gen-actions">
-                  <div class="cost-hint" id="compCostHint">预计花费：文字模型按字符计费</div>
+                  <div class="cost-hint" id="compCostHint">预计花费 <b style="color:var(--accent-strong)">5</b> 积分/次</div>
                   <button class="btn-primary" id="compStartBtn" onclick="startCompetitorAnalysis()">开始分析</button>
                 </div>
               </div>
@@ -1327,7 +1327,7 @@ textarea.prompt-area{min-height:150px;font-size:12px;line-height:1.65;color:#2A3
                   <textarea id="bvData" class="textarea" rows="4" placeholder="粘贴评论、客服记录、退货数据、问答、访谈等文本内容&#10;支持多条记录，每条一行或用空行分隔&#10;选择"分析已有资料"或"组合调研"时必填"></textarea>
                 </div>
                 <div class="gen-actions">
-                  <div class="cost-hint" id="bvCostHint">预计花费：文字模型按字符计费</div>
+                  <div class="cost-hint" id="bvCostHint">预计花费 <b style="color:var(--accent-strong)">5</b> 积分/次</div>
                   <button class="btn-primary" id="bvStartBtn" onclick="startBuyerVoice()">开始调研</button>
                 </div>
               </div>
@@ -1403,7 +1403,7 @@ textarea.prompt-area{min-height:150px;font-size:12px;line-height:1.65;color:#2A3
                   <textarea id="selNote" class="textarea" rows="2" placeholder="如：预算范围、供应链优势、目标人群、避免的品类等"></textarea>
                 </div>
                 <div class="gen-actions">
-                  <div class="cost-hint" id="selCostHint">预计花费：文字模型按字符计费</div>
+                  <div class="cost-hint" id="selCostHint">预计花费 <b style="color:var(--accent-strong)">10</b> 积分/次</div>
                   <button class="btn-primary" id="selStartBtn" onclick="startProductSelection()">开始选品</button>
                 </div>
               </div>
@@ -1491,7 +1491,7 @@ textarea.prompt-area{min-height:150px;font-size:12px;line-height:1.65;color:#2A3
                 </div>
                 <div class="s-desc" id="listingLangHint" style="margin-bottom:12px">Listing正文将使用 <b>英语</b> 输出，诊断说明使用中文。</div>
                 <div class="gen-actions">
-                  <div class="cost-hint" id="listingCostHint">预计花费：文字模型按字符计费</div>
+                  <div class="cost-hint" id="listingCostHint">预计花费 <b style="color:var(--accent-strong)">10</b> 积分/次</div>
                   <button class="btn-primary" id="listingStartBtn" onclick="startListingOpt()">开始生成</button>
                 </div>
               </div>
@@ -1950,7 +1950,7 @@ function navigate(){
   if(r==='calendar'){ calCurMonth=new Date().getMonth(); calCurYear=new Date().getFullYear(); renderCalendar(); }
   if(r==='admin'){ renderAdminSec(); document.querySelectorAll('.admin-nav').forEach(n=>n.classList.toggle('active',n.dataset.admin===adminSec)); }
   if(r==='profile') renderProfile();
-  if(r==='competitor' || r==='buyervoice' || r==='selection' || r==='listing'){ document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.route==='ops')); if(r==='selection') setTimeout(updateSorftimeStatus, 100); if(r==='listing') setTimeout(updateListingSorftimeStatus, 100); if(r==='competitor') setTimeout(updateCompSorftimeStatus, 100); } if(r==='ops'){ setTimeout(filterOpsCards, 50); }
+  if(r==='competitor' || r==='buyervoice' || r==='selection' || r==='listing'){ updateOpsCostHints(); document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.route==='ops')); if(r==='selection') setTimeout(updateSorftimeStatus, 100); if(r==='listing') setTimeout(updateListingSorftimeStatus, 100); if(r==='competitor') setTimeout(updateCompSorftimeStatus, 100); } if(r==='ops'){ setTimeout(filterOpsCards, 50); }
   // 恢复工作台返回条：若当前路由的工作台仍处于已进入状态，恢复返回按钮
   if(sb && r==='imagegen'){ const gs=document.getElementById('genStudio'); if(gs && gs.style.display==='block'){ sb.style.display='flex'; } else { renderSkillGrid(); } }
   if(vb && r==='video'){ const vs=document.getElementById('videoStudio'); if(vs && vs.style.display==='block'){ vb.style.display='flex'; } else { renderVideoSkillGrid(); } }
@@ -4272,6 +4272,9 @@ async function startCompetitorAnalysis(){
     return;
   }
 
+  const dq=deductPoints('ops',1,0,urls,'运营工作台','竞品分析');
+  if(!dq.ok){ toast(dq.reason); return; }
+
   const btn = $('#compStartBtn');
   btn.disabled = true;
   btn.textContent = '分析中…';
@@ -4597,6 +4600,9 @@ async function startBuyerVoice(){
     return;
   }
 
+  const dq=deductPoints('ops',1,0,product,'运营工作台','买家心声');
+  if(!dq.ok){ toast(dq.reason); return; }
+
   const btn = $('#bvStartBtn');
   btn.disabled = true;
   btn.textContent = '调研中…';
@@ -4914,6 +4920,9 @@ async function startProductSelection(){
     toast('文字模型未配置，请到后台「模型设置」配置文字模型接口与秘钥');
     return;
   }
+
+  const dq=deductPoints('ops',1,0,query,'运营工作台','选品自动化');
+  if(!dq.ok){ toast(dq.reason); return; }
 
   const btn = $('#selStartBtn');
   btn.disabled = true;
@@ -5294,6 +5303,9 @@ async function startListingOpt(){
     toast('文字模型未配置，请到后台「模型设置」配置文字模型接口与秘钥');
     return;
   }
+
+  const dq=deductPoints('ops',1,0,productName+' | '+asins,'运营工作台','Listing优化');
+  if(!dq.ok){ toast(dq.reason); return; }
 
   const btn = $('#listingStartBtn');
   btn.disabled = true;
@@ -6400,7 +6412,9 @@ function initAccount(){
       }
     }
   });
-  sysCfg=jload(K_SYS,{ imgCount:8, videoCount:3, imgSizes:['1:1'], defaultPlatform:'taobao', defaultLang:'zh', maxUploadMB:6, pointRate:0.2, imgCost:1, videoCost:2 });
+  sysCfg=jload(K_SYS,{ imgCount:8, videoCount:3, imgSizes:['1:1'], defaultPlatform:'taobao', defaultLang:'zh', maxUploadMB:6, pointRate:0.2, imgCost:1, videoCost:2, opsCosts:{'竞品分析':5,'买家心声':5,'选品自动化':10,'Listing优化':10} });
+  if(!sysCfg.opsCosts || typeof sysCfg.opsCosts!=='object') sysCfg.opsCosts={};
+  ['竞品分析','买家心声','选品自动化','Listing优化'].forEach(k=>{ if(!(sysCfg.opsCosts[k]>0)) sysCfg.opsCosts[k]=(k==='选品自动化'||k==='Listing优化')?10:5; });
   packToggle=jload(K_PT,{ image:{}, video:{}, ops:{} });
 }
 
@@ -6541,12 +6555,22 @@ function renderOrdersModal(){
 /* ============ 积分系统 ============ */
 function calcImageCost(count){ return Math.max(1, count|0) * ((sysCfg&&sysCfg.imgCost)||1); }
 function calcVideoCost(duration){ return Math.max(1, duration|0) * ((sysCfg&&sysCfg.videoCost)||2); }
+function calcOpsCost(mode){
+  const v=(sysCfg&&sysCfg.opsCosts&&sysCfg.opsCosts[mode]);
+  return (v>0?v:((mode==='选品自动化'||mode==='Listing优化')?10:5));
+}
+function updateOpsCostHints(){
+  const map={ compCostHint:'竞品分析', bvCostHint:'买家心声', selCostHint:'选品自动化', listingCostHint:'Listing优化' };
+  Object.keys(map).forEach(id=>{ const el=$('#'+id); if(el) el.innerHTML='预计花费 <b style="color:var(--accent-strong)">'+calcOpsCost(map[id])+'</b> 积分/次'; });
+}
 function deductPoints(type, count, duration, prompt, packName, modeName){
   if(!me){ return {ok:false, cost:0, reason:'请先登录'}; }
-  const cost = type==='video' ? calcVideoCost(duration) : calcImageCost(count);
+  const cost = type==='video' ? calcVideoCost(duration) : (type==='ops' ? calcOpsCost(modeName) : calcImageCost(count));
   const detail = type==='video'
     ? (modeName||'视频') + ' · ' + duration + '秒 · ' + (prompt||'').slice(0,40)
-    : (modeName||'生图') + ' · ' + count + '张 · ' + (prompt||'').slice(0,40);
+    : type==='ops'
+      ? (modeName||'运营分析') + ' · 1次 · ' + (prompt||'').slice(0,40)
+      : (modeName||'生图') + ' · ' + count + '张 · ' + (prompt||'').slice(0,40);
   // 管理员免积分：仍记录一条消费明细（0积分+免积分标注），便于后台监控生成动作
   if(me.role==='admin'){
     orders.unshift({
@@ -6729,6 +6753,13 @@ function renderMember(){
           <div class="field"><div class="field-label">生图消耗（积分/张）</div><input type="number" id="pr_img" value="${sysCfg.imgCost||1}" min="1"></div>
           <div class="field"><div class="field-label">视频消耗（积分/秒）</div><input type="number" id="pr_video" value="${sysCfg.videoCost||2}" min="1"></div>
         </div>
+        <div class="s-label" style="margin-bottom:8px">运营玩法消耗（积分/次）</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px">
+          <div class="field"><div class="field-label">竞品分析</div><input type="number" id="pr_op_comp" value="${(sysCfg.opsCosts||{})['竞品分析']||5}" min="1"></div>
+          <div class="field"><div class="field-label">买家心声</div><input type="number" id="pr_op_bv" value="${(sysCfg.opsCosts||{})['买家心声']||5}" min="1"></div>
+          <div class="field"><div class="field-label">选品自动化</div><input type="number" id="pr_op_sel" value="${(sysCfg.opsCosts||{})['选品自动化']||10}" min="1"></div>
+          <div class="field"><div class="field-label">Listing优化</div><input type="number" id="pr_op_list" value="${(sysCfg.opsCosts||{})['Listing优化']||10}" min="1"></div>
+        </div>
         <div class="set-row" style="margin-bottom:12px"><div><div class="s-label">账号有效期规则</div><div class="s-desc">仅后台可注册账号并设置有效期，管理员默认永久</div></div><span class="key-badge on">已启用</span></div>
         <button class="btn btn-primary btn-sm" onclick="savePointRules()">保存积分规则</button>
       </div></div>`;
@@ -6754,7 +6785,13 @@ function savePointRules(){
   sysCfg.pointRate = parseFloat($('#pr_rate').value)||0.2;
   sysCfg.imgCost = parseInt($('#pr_img').value)||1;
   sysCfg.videoCost = parseInt($('#pr_video').value)||2;
+  const oc = sysCfg.opsCosts || (sysCfg.opsCosts={});
+  oc['竞品分析']=parseInt($('#pr_op_comp').value)||5;
+  oc['买家心声']=parseInt($('#pr_op_bv').value)||5;
+  oc['选品自动化']=parseInt($('#pr_op_sel').value)||10;
+  oc['Listing优化']=parseInt($('#pr_op_list').value)||10;
   jsave(K_SYS,sysCfg);
+  updateOpsCostHints();
   toast('积分规则已保存，立即生效');
   renderMember();
 }
