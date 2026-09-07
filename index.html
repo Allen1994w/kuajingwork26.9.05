@@ -705,6 +705,24 @@ textarea{resize:vertical;min-height:86px;line-height:1.6}
 .mg-perm:hover{border-color:var(--accent);color:var(--accent-strong)}
 .mg-perm.on{background:linear-gradient(135deg,var(--accent-soft),#E3F5F1);border-color:rgba(14,148,136,.4);color:var(--accent-strong);font-weight:600}
 /* ============ 通用弹窗 ============ */
+.ex-toolbar{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+.ex-update{font-size:13px;color:var(--text-muted)}
+.ex-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.ex-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px 18px;transition:all .2s}
+.ex-card:hover{border-color:var(--accent);box-shadow:0 4px 16px rgba(14,148,136,.08)}
+.ex-card.loading{opacity:.5}
+.ex-card-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.ex-flag{font-size:22px}
+.ex-name{font-size:14px;font-weight:600;color:var(--ink-900)}
+.ex-unit{font-size:11px;color:var(--text-faint);margin-left:auto;background:var(--bg-soft);padding:2px 7px;border-radius:6px}
+.ex-price{font-size:26px;font-weight:800;color:var(--ink-900);letter-spacing:.5px;line-height:1.2}
+.ex-change{font-size:13px;font-weight:600;margin-top:4px}
+.ex-change.up{color:#E5484D}
+.ex-change.down{color:#12B76A}
+.ex-change span{font-weight:400;opacity:.7}
+.ex-detail{display:flex;gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border-light);font-size:11.5px;color:var(--text-muted)}
+.ex-detail span{flex:1}
+.ex-note{margin-top:16px;font-size:12px;color:var(--text-faint);text-align:center}
 .cbe-mask{position:fixed;inset:0;background:rgba(15,30,44,.5);z-index:240;display:none;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(2px)}
 .cbe-mask.show{display:flex}
 .cbe-modal{background:#fff;border-radius:18px;width:min(580px,92vw);max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 30px 70px rgba(10,26,44,.34);border:1px solid rgba(203,213,225,.6)}
@@ -862,6 +880,10 @@ textarea.prompt-area{min-height:150px;font-size:12px;line-height:1.65;color:#2A3
       <a class="nav-item" href="#/services" data-route="services">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 7l9-4 9 4-9 4-9-4z"></path><path d="M3 7v10l9 4 9-4V7"></path><path d="M12 11v10"></path></svg>
         跨境服务
+      </a>
+      <a class="nav-item" href="#/exchange" data-route="exchange">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+        实时汇率
       </a>
     </nav>
     <!-- 后台管理侧边栏：进入后台时覆盖前台导航 -->
@@ -1627,8 +1649,7 @@ textarea.prompt-area{min-height:150px;font-size:12px;line-height:1.65;color:#2A3
               <span class="sb-tag">一件代发</span>
               <span class="sb-tag">移仓换标</span>
               <span class="sb-tag">FBA中转</span>
-              <span class="sb-tag">退货处理</span>
-              <span class="sb-tag">贴标换标</span>
+              <span class="sb-tag">FP牌/电子烟</span>
             </div>
           </div>
           <div class="sb-right">
@@ -1680,6 +1701,23 @@ textarea.prompt-area{min-height:150px;font-size:12px;line-height:1.65;color:#2A3
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- ===== 实时汇率 ===== -->
+      <div class="route" data-route="exchange">
+        <div class="page-head">
+          <h1>实时汇率</h1>
+          <p>跨境电商常用货币对实时行情，数据来源新浪财经，点击刷新获取最新报价。</p>
+        </div>
+        <div class="ex-toolbar">
+          <button class="btn btn-primary btn-sm" onclick="renderExchange()">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:5px"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+            刷新汇率
+          </button>
+          <span class="ex-update" id="exUpdateTime">加载中...</span>
+        </div>
+        <div class="ex-grid" id="exGrid"></div>
+        <div class="ex-note">数据仅供参考，实际交易以银行柜台或支付平台报价为准。日元报价为100日元兑人民币。</div>
       </div>
 
       <!-- ===== 后台管理 ===== -->
@@ -1860,10 +1898,94 @@ function renderClocks(){
 renderClocks();
 setInterval(renderClocks, 1000);
 
+/* ============ 实时汇率 ============ */
+const EX_PAIRS = [
+  {code:'fx_susdcny', name:'美元/人民币', flag:'🇺🇸', unit:'USD'},
+  {code:'fx_seurcny', name:'欧元/人民币', flag:'🇪🇺', unit:'EUR'},
+  {code:'fx_sgbpcny', name:'英镑/人民币', flag:'🇬🇧', unit:'GBP'},
+  {code:'fx_sjpycny', name:'日元/人民币', flag:'🇯🇵', unit:'JPY(100)'},
+  {code:'fx_saudcny', name:'澳元/人民币', flag:'🇦🇺', unit:'AUD'},
+  {code:'fx_scadcny', name:'加元/人民币', flag:'🇨🇦', unit:'CAD'},
+  {code:'fx_shkdcny', name:'港币/人民币', flag:'🇭🇰', unit:'HKD'},
+  {code:'fx_schfcny', name:'瑞郎/人民币', flag:'🇨🇭', unit:'CHF'},
+];
+let exCache = {};
+async function renderExchange(){
+  const grid = document.getElementById('exGrid');
+  const timeEl = document.getElementById('exUpdateTime');
+  if(!grid) return;
+  // 先渲染缓存或占位
+  grid.innerHTML = EX_PAIRS.map(p=>{
+    const d = exCache[p.code];
+    if(d){
+      const change = (d.buy - d.prev).toFixed(4);
+      const up = d.buy >= d.prev;
+      return `<div class="ex-card">
+        <div class="ex-card-head"><span class="ex-flag">${p.flag}</span><span class="ex-name">${p.name}</span></div>
+        <div class="ex-price">${d.buy.toFixed(4)}</div>
+        <div class="ex-change ${up?'up':'down'}">${up?'▲':'▼'} ${Math.abs(change)} <span>(${((change/d.prev)*100).toFixed(2)}%)</span></div>
+        <div class="ex-detail"><span>买入 ${d.buy.toFixed(4)}</span><span>卖出 ${d.sell.toFixed(4)}</span><span>昨收 ${d.prev.toFixed(4)}</span></div>
+      </div>`;
+    }
+    return `<div class="ex-card loading"><div class="ex-flag">${p.flag}</div><div class="ex-name">${p.name}</div><div class="ex-price">--</div></div>`;
+  }).join('');
+
+  const list = EX_PAIRS.map(p=>p.code).join(',');
+  const url = 'https://hq.sinajs.cn/list=' + list;
+  try {
+    let raw;
+    // 优先本地代理（8788 GET + Referer）
+    try {
+      const resp = await fetch('http://127.0.0.1:8788/', {
+        method:'GET',
+        headers:{'X-Proxy-Target':url, 'X-Proxy-Referer':'https://finance.sina.com.cn'}
+      });
+      raw = await resp.text();
+    } catch(e) {
+      // 代理不可用时直接请求（可能CORS失败）
+      const resp = await fetch(url, {headers:{'Referer':'https://finance.sina.com.cn'}});
+      raw = await resp.text();
+    }
+    // 解析新浪汇率：字段顺序为 时间,买入价,卖出价,中间价,涨跌点,昨收,最高,最低,今开,名称,...,日期
+    const lines = raw.split(';');
+    let latestTime = '';
+    for(const line of lines){
+      const m = line.match(/var hq_str_(\w+)="([^"]*)"/);
+      if(!m) continue;
+      const code = m[1], fields = m[2].split(',');
+      if(fields.length < 10) continue;
+      const buy = parseFloat(fields[1]), sell = parseFloat(fields[2]);
+      const prev = parseFloat(fields[5]);
+      const time = fields[0];
+      const date = fields[fields.length - 1] || '';
+      exCache[code] = {buy, sell, prev, date, time};
+      if(date && time) latestTime = date + ' ' + time;
+      else if(time) latestTime = time;
+    }
+    // 重新渲染
+    grid.innerHTML = EX_PAIRS.map(p=>{
+      const d = exCache[p.code];
+      if(!d) return `<div class="ex-card"><div class="ex-flag">${p.flag}</div><div class="ex-name">${p.name}</div><div class="ex-price">获取失败</div></div>`;
+      const change = (d.buy - d.prev).toFixed(4);
+      const up = d.buy >= d.prev;
+      return `<div class="ex-card">
+        <div class="ex-card-head"><span class="ex-flag">${p.flag}</span><span class="ex-name">${p.name}</span><span class="ex-unit">${p.unit}</span></div>
+        <div class="ex-price">${d.buy.toFixed(4)}</div>
+        <div class="ex-change ${up?'up':'down'}">${up?'▲':'▼'} ${Math.abs(change)} <span>(${((change/d.prev)*100).toFixed(2)}%)</span></div>
+        <div class="ex-detail"><span>买入 ${d.buy.toFixed(4)}</span><span>卖出 ${d.sell.toFixed(4)}</span><span>昨收 ${d.prev.toFixed(4)}</span></div>
+      </div>`;
+    }).join('');
+    timeEl.textContent = '更新时间：' + (latestTime || new Date().toLocaleString('zh-CN'));
+  } catch(e) {
+    timeEl.textContent = '刷新失败：' + e.message + '（请确保本地代理已启动）';
+    console.error('汇率获取失败', e);
+  }
+}
+
 /* ============ 路由 ============ */
 const ROUTE_TITLES = {
   imagegen:'生图工作台', video:'视频工作台', ops:'运营工作台',
-  history:'历史记录', calendar:'跨境日历', services:'跨境服务', admin:'后台管理', profile:'个人中心', competitor:'竞品分析', buyervoice:'买家心声', selection:'选品自动化', listing:'Listing优化'
+  history:'历史记录', calendar:'跨境日历', services:'跨境服务', exchange:'实时汇率', admin:'后台管理', profile:'个人中心', competitor:'竞品分析', buyervoice:'买家心声', selection:'选品自动化', listing:'Listing优化'
 };
 function currentRoute(){
   const h = location.hash.replace(/^#\//,'');
@@ -1891,6 +2013,7 @@ function navigate(){
   if(r==='calendar'){ calCurMonth=new Date().getMonth(); calCurYear=new Date().getFullYear(); renderCalendar(); }
   if(r==='admin'){ renderAdminSec(); document.querySelectorAll('.admin-nav').forEach(n=>n.classList.toggle('active',n.dataset.admin===adminSec)); }
   if(r==='profile') renderProfile();
+  if(r==='exchange') renderExchange();
   if(r==='competitor' || r==='buyervoice' || r==='selection' || r==='listing'){ updateOpsCostHints(); document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.route==='ops')); if(r==='selection') setTimeout(updateSorftimeStatus, 100); if(r==='listing') setTimeout(updateListingSorftimeStatus, 100); if(r==='competitor') setTimeout(updateCompSorftimeStatus, 100); } if(r==='ops'){ setTimeout(filterOpsCards, 50); }
   // 恢复工作台返回条：若当前路由的工作台仍处于已进入状态，恢复返回按钮
   if(sb && r==='imagegen'){ const gs=document.getElementById('genStudio'); if(gs && gs.style.display==='block'){ sb.style.display='flex'; } else { renderSkillGrid(); } }
