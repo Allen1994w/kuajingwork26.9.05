@@ -917,11 +917,11 @@ textarea.prompt-area{min-height:150px;font-size:12px;line-height:1.65;color:#2A3
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="16" rx="2.5"></rect><circle cx="9" cy="9.5" r="1.6"></circle><path d="M3 17l5-4.5 4 3.5 3.5-3L21 17"></path></svg>
         生图工作台
       </a>
-      <a class="nav-item active" href="#/video" data-route="video">
+      <a class="nav-item" href="#/video" data-route="video" id="navVideo">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="5" width="13" height="14" rx="2.5"></rect><path d="M16 10l5-3v10l-5-3"></path></svg>
         视频工作台
       </a>
-      <a class="nav-item" href="#/ops" data-route="ops">
+      <a class="nav-item" href="#/ops" data-route="ops" id="navOps">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 20V10M10 20V4M16 20v-7M21 20H3"></path></svg>
         运营工作台
       </a>
@@ -3033,8 +3033,8 @@ function curPrompt(){
 }
 
 function renderSkillGrid(){
-  const packs=SKILL_PACKS.filter(p=>!(packToggle && packToggle.image && packToggle.image['pack_'+p.id]===false));
-  if(!packs.length){ $('#skillGrid').innerHTML='<div class="his-empty">暂无可用技能包（后台已全部停用）</div>'; return; }
+  const packs=SKILL_PACKS.filter(p=>!(packToggle && packToggle.image && packToggle.image['pack_'+p.id]===false) && hasPerm(me,'pack_'+p.id));
+  if(!packs.length){ $('#skillGrid').innerHTML='<div class="his-empty">暂无可用技能包（后台未开启或账号未解锁）</div>'; return; }
   $('#skillGrid').innerHTML = packs.map(p=>{
     const col = {teal:['var(--accent-soft)','var(--accent-strong)'], blue:['#E7EEFA','var(--blue)'], orange:['#FFF2E4','#E8590C'], green:['#E7F7EF','#0E9F6E'], pink:['#FDEBF0','#E64980'], purple:['#EFEAFD','#7048E8'], amber:['#FFF4E0','#D98E04'], red:['#FDE8E8','#E03131']}[p.color] || ['#E7EEFA','var(--blue)'];
     const c = col[0], c2 = col[1];
@@ -3898,9 +3898,9 @@ function buildVideoPrompt(){
 }
 /* —— 渲染 —— */
 function renderVideoSkillGrid(){
-  const packs = VIDEO_PACKS.filter(p=>!(packToggle && packToggle.video && packToggle.video['v_'+p.id]===false));
+  const packs = VIDEO_PACKS.filter(p=>!(packToggle && packToggle.video && packToggle.video['v_'+p.id]===false) && hasPerm(me,'v_'+p.id));
   const grid = $('#videoSkillGrid');
-  if(!packs.length){ grid.innerHTML = '<div class="his-empty">暂无可用视频技能包（后台已全部停用）</div>'; return; }
+  if(!packs.length){ grid.innerHTML = '<div class="his-empty">暂无可用视频技能包（后台未开启或账号未解锁）</div>'; return; }
   grid.innerHTML = packs.map(p=>{
     const col = {teal:['var(--accent-soft)','var(--accent-strong)'], blue:['#E7EEFA','var(--blue)'], orange:['#FFF2E4','#E8590C'], green:['#E7F7EF','#0E9F6E'], pink:['#FDEBF0','#E64980'], purple:['#EFEAFD','#7048E8'], amber:['#FFF4E0','#D98E04'], red:['#FDE8E8','#E03131']}[p.color] || ['#E7EEFA','var(--blue)'];
     const c = col[0], c2 = col[1];
@@ -4180,13 +4180,13 @@ function filterOpsCards(){
   Object.keys(map).forEach(key=>{
     const card = document.getElementById('ops_card_'+key);
     if(!card) return;
-    const disabled = packToggle && packToggle.ops && packToggle.ops[map[key]]===false;
+    const disabled = (packToggle && packToggle.ops && packToggle.ops[map[key]]===false) || !hasPerm(me, map[key]);
     card.style.display = disabled ? 'none' : '';
     if(!disabled) visible++;
   });
   const grid = document.querySelector('.route[data-route="ops"] .skill-grid');
   if(grid && visible===0){
-    grid.innerHTML = '<div class="his-empty">暂无可用运营工具（后台已全部停用）</div>';
+    grid.innerHTML = '<div class="his-empty">暂无可用运营工具（后台未开启或账号未解锁）</div>';
   }
 }
 function openCompetitorAnalysis(){
@@ -6476,8 +6476,8 @@ function migratePerms(){
   });
   jsave(K_USERS,users);
 }
-function isPermAll(u){ return !u.perms || u.perms==='all'; }
-function hasPerm(u,id){ return isPermAll(u) || (Array.isArray(u.perms) && u.perms.indexOf(id)>-1); }
+function isPermAll(u){ return !u || !u.perms || u.perms==='all'; }
+function hasPerm(u,id){ return isPermAll(u) || (u && Array.isArray(u.perms) && u.perms.indexOf(id)>-1); }
 
 function initAccount(){
   if(!localStorage.getItem(K_USERS)){
@@ -6568,6 +6568,16 @@ function renderSideAccount(){
   if(!av) return;
   if(me){ av.textContent=me.avatarChar||me.name.charAt(0); nm.textContent=me.name; rl.textContent=me.role==='admin'?'管理员 · 个人中心':'会员 · 个人中心'; }
   else { av.textContent='?'; nm.textContent='未登录'; rl.textContent='点击登录'; }
+  // 侧边栏入口权限控制：无对应类别权限则隐藏
+  const navV=document.getElementById('navVideo'), navO=document.getElementById('navOps');
+  if(navV){
+    const hasVideo = isPermAll(me) || (me && Array.isArray(me.perms) && me.perms.some(p=>p&&p.indexOf('v_')===0));
+    navV.style.display = hasVideo ? '' : 'none';
+  }
+  if(navO){
+    const hasOps = isPermAll(me) || (me && Array.isArray(me.perms) && me.perms.some(p=>p&&p.indexOf('o_')===0));
+    navO.style.display = hasOps ? '' : 'none';
+  }
 }
 function renderProfile(){
   if(!me){
@@ -6615,6 +6625,12 @@ function doLogin(){
   $('#loginEmail').value=''; $('#loginPassword').value='';
   hideLoginPage();
   renderSideAccount(); renderProfile(); applyAdminUI();
+  // 登录后重置工作台状态并重新渲染，确保权限过滤生效
+  const gs=document.getElementById('genStudio'); if(gs) gs.style.display='none';
+  const vs=document.getElementById('videoStudio'); if(vs) vs.style.display='none';
+  try{ renderSkillGrid(); }catch(e){}
+  try{ renderVideoSkillGrid(); }catch(e){}
+  try{ filterOpsCards(); }catch(e){}
   toast('欢迎回来，'+u.name);
   if(location.hash==='#/admin' && u.role!=='admin'){ location.hash='#/imagegen'; }
 }
@@ -6872,7 +6888,7 @@ function savePermForm(){
   const u=users.find(x=>x.id===curUserFormId); if(!u) return;
   const on=[...document.querySelectorAll('.mg-perm.on')].map(x=>x.dataset.perm);
   u.perms=on.length===mainModes().length?'all':on;
-  jsave(K_USERS,users); closeModal(); renderUsers(); toast('玩法权限已更新');
+  jsave(K_USERS,users); closeModal(); renderUsers(); renderSideAccount(); toast('玩法权限已更新');
 }
 function openRechargeFor(id){
   curUserFormId=id; const u=users.find(x=>x.id===id); if(!u) return;
