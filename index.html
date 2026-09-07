@@ -539,6 +539,30 @@ textarea{resize:vertical;min-height:86px;line-height:1.6}
 .hd-close:hover{background:#E7EDF3;color:var(--ink-900)}
 .hd-viewer{flex:1;background:#0E1821;display:flex;align-items:center;justify-content:center;position:relative;min-height:320px;padding:18px}
 .hd-viewer img.hd-img{max-width:100%;max-height:56vh;border-radius:8px;object-fit:contain;cursor:zoom-in;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+.hd-viewer.hd-report-wrap{background:#F7F9FB;display:block;overflow:auto;max-height:64vh;padding:20px 24px}
+.hd-report{background:#fff;border:1px solid #E5EAF0;border-radius:12px;padding:22px 26px;font-size:14px;line-height:1.75;color:#1F2937;box-shadow:0 2px 10px rgba(15,23,42,.05)}
+.hd-report h1{font-size:20px;margin:6px 0 12px;color:#0F172A;border-bottom:2px solid #0E9488;padding-bottom:8px}
+.hd-report h2{font-size:17px;margin:18px 0 8px;color:#0F172A;padding-left:10px;border-left:4px solid #0E9488}
+.hd-report h3{font-size:15px;margin:14px 0 6px;color:#134E4A}
+.hd-report h4{font-size:14px;margin:12px 0 6px;color:#134E4A}
+.hd-report p{margin:6px 0}
+.hd-report strong{color:#0E7490}
+.hd-report ul,.hd-report ol{margin:6px 0 6px 4px;padding-left:22px}
+.hd-report li{margin:3px 0}
+.hd-report blockquote{margin:10px 0;padding:8px 14px;background:#F0FDFA;border-left:4px solid #2DD4BF;border-radius:0 8px 8px 0;color:#134E4A}
+.hd-report pre.md-code{background:#0F172A;color:#E2E8F0;padding:12px 14px;border-radius:8px;overflow:auto;font-size:12.5px;line-height:1.55;margin:10px 0}
+.hd-report code{background:#E6F0F2;color:#0F766E;padding:1px 6px;border-radius:4px;font-size:12.5px}
+.hd-report pre.md-code code{background:transparent;color:#E2E8F0;padding:0}
+.hd-report .md-table-wrap{overflow-x:auto;margin:10px 0;border-radius:8px;border:1px solid #E5EAF0}
+.hd-report table{border-collapse:collapse;width:100%;font-size:13px;min-width:420px}
+.hd-report th{background:#F0FDFA;color:#0F766E;font-weight:600;text-align:left}
+.hd-report th,.hd-report td{border:1px solid #E5EAF0;padding:7px 10px;vertical-align:top}
+.hd-report tr:nth-child(even) td{background:#FAFCFD}
+.hd-report hr{border:none;border-top:1px dashed #D6DEE6;margin:12px 0}
+.hd-report a{color:#0E9488;text-decoration:none}
+.hd-report a:hover{text-decoration:underline}
+.hd-report .md-blank{height:6px}
+.report-empty{text-align:center;color:#94A3B8;padding:30px 0;font-size:13px}
 .hd-nav{position:absolute;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.14);border:none;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;z-index:2}
 .hd-nav:hover{background:rgba(255,255,255,.28)}
 .hd-nav.prev{left:14px}.hd-nav.next{right:14px}
@@ -4937,6 +4961,69 @@ async function startProductSelection(){
   }
 }
 
+function escHtml(s){
+  return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function inlineMd(s){
+  return escHtml(s)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+}
+function mdTable(rows){
+  let html = '<div class="md-table-wrap"><table>';
+  rows.forEach((row, idx) => {
+    let cells = row.split('|').map(c => c.trim());
+    if(cells.length && cells[0] === '') cells.shift();
+    if(cells.length && cells[cells.length-1] === '') cells.pop();
+    if(cells.length === 1 && /^[-:| ]+$/.test(cells[0])) return;
+    const tag = idx === 0 ? 'th' : 'td';
+    html += '<tr>' + cells.map(c => '<' + tag + '>' + inlineMd(c) + '</' + tag + '>').join('') + '</tr>';
+  });
+  return html + '</table></div>';
+}
+function renderMarkdownHtml(text){
+  if(!text) return '<div class="report-empty">暂无内容</div>';
+  const lines = String(text).split(/\r?\n/);
+  let html = '', i = 0;
+  while(i < lines.length){
+    const line = lines[i];
+    if(/^```/.test(line)){
+      const buf = []; let j = i + 1;
+      while(j < lines.length && !/^```/.test(lines[j])){ buf.push(escHtml(lines[j])); j++; }
+      html += '<pre class="md-code"><code>' + buf.join('\n') + '</code></pre>';
+      i = j + 1; continue;
+    }
+    if(/^\|/.test(line) && /\|$/.test(line)){
+      const rows = []; let j = i;
+      while(j < lines.length && /^\|/.test(lines[j]) && /\|$/.test(lines[j])){ rows.push(lines[j]); j++; }
+      html += mdTable(rows);
+      i = j; continue;
+    }
+    const h = line.match(/^(#{1,4})\s+(.*)$/);
+    if(h){ html += '<h' + h[1].length + '>' + inlineMd(h[2]) + '</h' + h[1].length + '>'; i++; continue; }
+    if(/^\s*[-*]\s+/.test(line)){
+      html += '<ul>';
+      while(i < lines.length && /^\s*[-*]\s+/.test(lines[i])){ html += '<li>' + inlineMd(lines[i].replace(/^\s*[-*]\s+/, '')) + '</li>'; i++; }
+      html += '</ul>'; continue;
+    }
+    if(/^\s*\d+[.、]\s+/.test(line)){
+      html += '<ol>';
+      while(i < lines.length && /^\s*\d+[.、]\s+/.test(lines[i])){ html += '<li>' + inlineMd(lines[i].replace(/^\s*\d+[.、]\s+/, '')) + '</li>'; i++; }
+      html += '</ol>'; continue;
+    }
+    if(/^>\s?/.test(line)){
+      html += '<blockquote>';
+      while(i < lines.length && /^>\s?/.test(lines[i])){ html += '<div>' + inlineMd(lines[i].replace(/^>\s?/, '')) + '</div>'; i++; }
+      html += '</blockquote>'; continue;
+    }
+    if(/^\s*([-*_])\1{2,}\s*$/.test(line)){ html += '<hr>'; i++; continue; }
+    if(!line.trim()){ html += '<div class="md-blank"></div>'; i++; continue; }
+    html += '<p>' + inlineMd(line) + '</p>';
+    i++;
+  }
+  return '<div class="hd-report">' + html + '</div>';
+}
 function renderSelectionResult(report){
   let html = report
     .replace(/^### (.+)$/gm, '<h3>$1</h3>')
@@ -5896,8 +5983,10 @@ function renderHistoryDetail(){
   }else if(isVideo){
     viewer = total ? '<div class="hd-viewer"><video class="hd-video" controls src="' + r.images[0] + '"></video></div>'
       : '<div class="hd-viewer"><div style="text-align:center;color:#CFE0EC"><svg viewBox="0 0 24 24" width="58" height="58" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="5" width="13" height="14" rx="2.5"/><path d="M16 10l5-3v10l-5-3"/></svg><div style="margin-top:10px;font-size:13px">' + (r.title||'视频') + (r.status==='生成中' ? ' · 生成中…' : ' · 暂无视频') + '</div></div></div>';
+  }else if(r.report){
+    viewer = '<div class="hd-viewer hd-report-wrap">' + renderMarkdownHtml(r.report) + '</div>';
   }else{
-    viewer = '<div class="hd-viewer"><div style="text-align:center;color:#CFE0EC"><svg viewBox="0 0 24 24" width="58" height="58" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/></svg><div style="margin-top:10px;font-size:13px">' + (r.title||'运营内容') + ' · 内容详情占位</div></div></div>';
+    viewer = '<div class="hd-viewer"><div style="text-align:center;color:#CFE0EC"><svg viewBox="0 0 24 24" width="58" height="58" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/></svg><div style="margin-top:10px;font-size:13px">' + (r.title||'运营内容') + ' · 暂无报告内容</div></div></div>';
   }
   const isAdminView = state.route==='admin';
   const downloadBtns = isImage
@@ -5908,7 +5997,10 @@ function renderHistoryDetail(){
     : (isVideo
       ? '<button class="btn btn-soft btn-sm" onclick="copyPrompt(\'' + r.id + '\')">复制提示词</button>' +
         (total ? '<button class="btn btn-soft btn-sm" onclick="downloadImage(\'' + r.id + '\',0)">下载视频</button>' : '')
-      : '');
+      : (r.report
+        ? '<button class="btn btn-soft btn-sm" onclick="copyReport(\'' + r.id + '\')">复制报告</button>' +
+          '<button class="btn btn-soft btn-sm" onclick="downloadReport(\'' + r.id + '\')">下载报告</button>'
+        : ''));
   $('#hisDetail').innerHTML =
     '<div class="hd-head"><div><h3>' + (r.title||'任务详情') + '</h3>' +
     '<div class="hd-meta">' + r.pack + ' · ' + r.mode + '　' +
@@ -5918,6 +6010,33 @@ function renderHistoryDetail(){
     '<div class="hd-foot"><div class="hd-prompt">' + (r.prompt || '（未填写补充内容）') + '</div>' +
     '<div class="hd-actions">' + downloadBtns +
     '<button class="btn btn-ghost btn-sm" onclick="delHistory(\'' + r.id + '\')">删除记录</button></div></div>';
+}
+function copyReport(id){
+  const r = DB.find(x=>x.id===id); if(!r || !r.report) return;
+  const txt = r.report;
+  const ok = () => successToast('报告已复制');
+  const fail = () => toast('复制失败，请手动复制');
+  const ta = document.createElement('textarea');
+  ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0'; ta.style.pointerEvents = 'none';
+  document.body.appendChild(ta); ta.focus(); ta.select();
+  let done = false;
+  try{ done = document.execCommand('copy'); }catch(e){ done = false; }
+  ta.remove();
+  if(done){ ok(); }
+  else if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(ok, fail); }
+  else fail();
+}
+function downloadReport(id){
+  const r = DB.find(x=>x.id===id); if(!r || !r.report) return;
+  const txt = r.report;
+  const name = (r.mode || '运营报告') + '_' + (r.time || Date.now()).toString().replace(/[\/:]/g,'-') + '.md';
+  const blob = new Blob(['\ufeff' + txt], {type: 'text/markdown;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 800);
+  successToast('报告已下载');
 }
 /* 一键复制提示词（图片/视频/运营通用） */
 function copyPrompt(id){
