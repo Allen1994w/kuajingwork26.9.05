@@ -2032,6 +2032,17 @@ const RMX_SIZES = ['1:1 · 1024×1024','3:4 · 768×1024','4:5 · 1024×1280','1
 const DETAIL_H_SIZES = ['16:9 · 2560×1440 (2K)','16:9 · 1920×1080','4:3 · 1440×1080','1:1 · 1024×1024'];
 const DETAIL_V_SIZES = ['3:4 · 900×1200','9:16 · 720×1280','1:1 · 1024×1024'];
 const EDETAIL_SIZES = ['3:4 · 900×1200','3:4 · 1200×1600','4:5 · 1024×1280','1:1 · 1024×1024'];
+/* 全尺寸合集：细分玩法限制的默认尺寸之外，允许用户自由更换其他尺寸 */
+const ALL_SIZES = ['1:1 · 1024×1024','4:3 · 1024×768','4:3 · 1440×1080','3:4 · 768×1024','3:4 · 900×1200','3:4 · 1200×1600','4:5 · 1024×1280','16:9 · 2560×1440 (2K)','16:9 · 1920×1080','16:9 · 1792×1024','16:9 · 1280×720','9:16 · 1024×1792','9:16 · 720×1280'];
+/* 平台推荐尺寸（默认选中，不锁死，用户可再更换） */
+const PLATFORM_SIZES = {
+  taobao:'1:1 · 1024×1024', jd:'1:1 · 1024×1024', pinduoduo:'1:1 · 1024×1024',
+  xiaohongshu:'3:4 · 768×1024', douyin:'9:16 · 720×1280',
+  amazon:'1:1 · 1024×1024', tiktok:'9:16 · 720×1280', temu:'1:1 · 1024×1024',
+  shein:'1:1 · 1024×1024', ebay:'1:1 · 1024×1024', shopee:'1:1 · 1024×1024',
+  ozon:'3:4 · 900×1200', wildberries:'3:4 · 900×1200',
+  dtc:'16:9 · 1280×720', custom:'1:1 · 1024×1024'
+};
 const EDETAIL_LOCKS = `Product Identity & Physics Lock:
 - silhouette lock: preserve overall shape, width/height/depth proportions, rounded corners or edges, and open/closed state.
 - pattern/logo placement lock: preserve relative position and direction of patterns, logos, nameplates, labels, and visible copy; keep unreadable text as visual placement only and do not invent words.
@@ -2934,8 +2945,13 @@ function selectMode(modeId){
   document.querySelectorAll('#modePills .seg-btn').forEach(b=>b.classList.toggle('active', b.dataset.mode===modeId));
   $('#studioModeSub').textContent = m.name;
   if(m.defaultPlatform){ $('#studioPlatform').value = m.defaultPlatform; syncLanguage(); }
-  $('#studioSize').innerHTML = m.sizes.map((s,i)=>'<option value="' + i + '">' + s + '</option>').join('');
+  // 尺寸下拉：玩法限制的默认尺寸优先展示，并补充全尺寸合集供用户自由更换；默认选中玩法默认尺寸
+  const sizeOpts = [];
+  m.sizes.forEach((s,i)=>{ sizeOpts.push({ s: s, i: i }); });
+  ALL_SIZES.forEach(s=>{ if(!m.sizes.includes(s)) sizeOpts.push({ s: s, i: sizeOpts.length }); });
+  $('#studioSize').innerHTML = sizeOpts.map(o=>'<option value="' + o.i + '">' + o.s + '</option>').join('');
   $('#studioSize').value = m.defaultSize;
+  $('#studioSize').dataset.default = m.defaultSize;
   if(m.fixedCount){
     $('#studioCount').style.display = 'none';
     $('#studioCountFixed').style.display = 'inline-flex';
@@ -3043,6 +3059,15 @@ function syncLanguage(){
   const note = noteMap ? (noteMap[plat.id] || noteDefault) : '';
   noteEl.style.display = note ? 'block' : 'none';
   noteEl.textContent = note;
+  // 平台推荐尺寸：默认选中对应尺寸（用户仍可自由更换其他尺寸）
+  const selSize = $('#studioSize');
+  if(selSize && selSize.options && selSize.options.length){
+    const rec = PLATFORM_SIZES[plat.id];
+    if(rec){
+      const opt = [...selSize.options].find(o=>o.text===rec);
+      if(opt) selSize.value = opt.value;
+    }
+  }
   if(curPack && curPack.id==='detail' && curMode){ $('#studioPrompt').value = curPrompt(); }
 }
 $('#studioPlatform').addEventListener('change', syncLanguage);
