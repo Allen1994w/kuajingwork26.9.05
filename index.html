@@ -6547,6 +6547,17 @@ function initAccount(){
   ['竞品分析','买家心声','选品自动化','Listing优化'].forEach(k=>{ if(!(sysCfg.opsCosts[k]>0)) sysCfg.opsCosts[k]=(k==='选品自动化'||k==='Listing优化')?10:5; });
   if(!sysCfg.contact || typeof sysCfg.contact!=='object') sysCfg.contact={ wechat:'', qrCode:'' };
   packToggle=jload(K_PT,{ image:{}, video:{}, ops:{} });
+  // 清理旧数据：只保留主玩法的key（pack_/v_/o_前缀），删除细分玩法的旧key
+  ['image','video','ops'].forEach(function(g){
+    if(packToggle[g] && typeof packToggle[g]==='object'){
+      Object.keys(packToggle[g]).forEach(function(k){
+        if(k.indexOf('pack_')!==0 && k.indexOf('v_')!==0 && k.indexOf('o_')!==0){
+          delete packToggle[g][k];
+        }
+      });
+    }
+  });
+  jsave(K_PT,packToggle);
 }
 
 /* ---------- 通用弹窗 ---------- */
@@ -6890,7 +6901,7 @@ function openPermForm(id){
     return `<div class="s-label" style="font-weight:700;margin:12px 0 8px">${grpTitle[g]}（${list.length}）</div>
       <div class="mg-perm-list">${list.map(m=>`<span class="mg-perm ${sel.indexOf(m.id)>-1?'on':''}" data-perm="${m.id}" onclick="this.classList.toggle('on')">${m.name.replace(' · ','·')}</span>`).join('')}</div>`;
   }).join('');
-  renderModal('设置玩法权限 · '+u.name,'勾选该账号可解锁的主玩法；全部勾选等于解锁全部',`
+  renderModal('设置玩法权限 · '+u.name,'勾选该账号可解锁的主玩法（需全局玩法开关已开启才会生效）；全部勾选等于解锁全部',`
     <div class="setting-list"><div class="set-row"><div><div class="s-label">一键操作</div><div class="s-desc">快速全选 / 清空</div></div><div class="s-right"><button class="btn btn-ghost btn-sm" onclick="document.querySelectorAll('.mg-perm').forEach(x=>x.classList.add('on'))">全选</button> <button class="btn btn-ghost btn-sm" onclick="document.querySelectorAll('.mg-perm').forEach(x=>x.classList.remove('on'))">清空</button></div></div></div>
     ${html}`,
     [{label:'取消',cls:'btn btn-ghost',act:'close'},{label:'保存权限',cls:'btn btn-primary',act:'savePermForm'}]);
@@ -7046,10 +7057,22 @@ function saveGenCode(){
 /* ---- 玩法配置 ---- */
 function renderPacks(){
   const grp={ image:'生图玩法', video:'视频玩法', ops:'运营玩法' };
+  const totalOn = {image:0, video:0, ops:0};
+  ['image','video','ops'].forEach(function(g){
+    const list = g==='image'?SKILL_PACKS:(g==='video'?VIDEO_MODES:OPS_MODES);
+    list.forEach(function(m){
+      const id = g==='image'?'pack_'+m.id:m.id;
+      if(packToggle[g][id]!==false) totalOn[g]++;
+    });
+  });
   const src=packTab==='image'?SKILL_PACKS.map(p=>({id:'pack_'+p.id, name:p.name, grp:'image'})):(packTab==='video'?VIDEO_MODES.map(m=>({id:m.id,name:m.name,grp:'video'})):OPS_MODES.map(m=>({id:m.id,name:m.name,grp:'ops'})));
   const isOn=id=>packToggle[packTab][id]!==false;
   $('#adminMain').innerHTML=`
-    <div class="adm-toolbar"><div class="adm-tabs">${['image','video','ops'].map(g=>`<div class="adm-tab ${packTab===g?'active':''}" onclick="packTab='${g}';renderPacks()">${grp[g]}</div>`).join('')}</div></div>
+    <div class="panel" style="margin-bottom:12px;padding:12px 16px;background:linear-gradient(135deg,#F0F9FF,#E0F2FE);border-left:3px solid #0EA5E9">
+      <div style="font-weight:600;color:#0C4A6E;margin-bottom:4px">全局玩法开关</div>
+      <div style="font-size:12px;color:#0369A1;line-height:1.6">此处控制玩法对<strong>所有用户</strong>的总开关。关闭后，即使用户有权限也无法使用该玩法。用户个人的玩法解锁权限请在「用户管理 → 玩法权限」中设置。</div>
+    </div>
+    <div class="adm-toolbar"><div class="adm-tabs">${['image','video','ops'].map(g=>`<div class="adm-tab ${packTab===g?'active':''}" onclick="packTab='${g}';renderPacks()">${grp[g]}（${totalOn[g]}/${g==='image'?SKILL_PACKS.length:(g==='video'?VIDEO_MODES.length:OPS_MODES.length)}）</div>`).join('')}</div></div>
     <div class="panel" style="padding:0;overflow:hidden"><table class="tbl"><thead><tr><th>主玩法</th><th>类型</th><th style="width:130px">状态</th></tr></thead>
       <tbody>${src.map(m=>`<tr><td style="font-weight:500">${m.name}</td><td>${grp[m.grp]}</td><td><div class="switch ${isOn(m.id)?'on':''}" onclick="togglePack('${m.id}',this)"></div></td></tr>`).join('')}</tbody></table></div>`;
 }
