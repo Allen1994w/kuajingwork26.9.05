@@ -3082,31 +3082,56 @@ function runStudioGen(){
   // 逐张生成计划：amazon 整套按 4 子玩法规格逐张，其余统一提示词/尺寸逐张
   const plan = buildGenPlan(m, count, finalPrompt, sizeText, extra, langD);
   const total = plan.length;
+  const startTs = Date.now();
+  let simTimer = null;
+  let realCap = total>1 ? 25 : 95;              // 当前真实进度上限：单张95（从8%爬升），多张25
+  let stepText = '任务已提交，生成中';
+  const stopSim = ()=>{ if(simTimer){ clearInterval(simTimer); simTimer = null; } };
+  const setBar = (pct, tipText, metaText)=>{
+    const bar = $('#genBar2'); if(bar) bar.style.width = pct + '%';
+    const pctEl = $('#genPct'); if(pctEl) pctEl.textContent = Math.round(pct) + '%';
+    if(tipText){ const tip = $('#genTip'); if(tip) tip.textContent = tipText; }
+    if(metaText){ $('#studioResultMeta').textContent = metaText; }
+  };
   const refreshProgress = (finishedCount)=>{
     if(taskId !== studioTaskSeq) return; // 结果区已被更新的任务占用
-    const pct = total>1 ? Math.round(25 + finishedCount/total*75) : 100;
-    const bar = $('#genBar2'); if(bar) bar.style.width = pct + '%';
-    const pctEl = $('#genPct'); if(pctEl) pctEl.textContent = pct + '%';
-    const tip = $('#genTip'); if(tip) tip.textContent = finishedCount>=total ? curPack.name + ' · ' + m.name + ' · 共 ' + total + ' 张 · 生成完成' : curPack.name + ' · ' + m.name + ' · 正在生成第 ' + (finishedCount+1) + '/' + total + ' 张 · ' + sizeText;
-    $('#studioResultMeta').textContent = finishedCount>=total ? (m.name + ' · 生成完成') : (m.name + ' · 第 ' + (finishedCount+1) + '/' + total + ' 张生成中');
+    realCap = finishedCount>=total ? 100 : (total>1 ? Math.round(25 + finishedCount/total*75) : 95);
+    stepText = finishedCount>=total ? ('共 ' + total + ' 张 · 生成完成') : ('正在生成第 ' + (finishedCount+1) + '/' + total + ' 张 · ' + sizeText);
+    const secs = Math.round((Date.now()-startTs)/1000);
+    setBar(realCap,
+      curPack.name + ' · ' + m.name + ' · ' + stepText + ' · 已用 ' + secs + 's',
+      finishedCount>=total ? (m.name + ' · 生成完成 · 用时 ' + secs + 's') : (m.name + ' · 第 ' + (finishedCount+1) + '/' + total + ' 张生成中 · ' + secs + 's'));
   };
   $('#studioResultMeta').textContent = m.name + ' · 生成中' + (realOk ? '' : '（原型演示）');
-  // 生成过程：逐张进度 + 取消按钮
+  // 生成过程：逐张进度 + 取消按钮 + 实时计时
   $('#studioResult').innerHTML =
     '<div class="gen-progress">' +
-      '<div class="progress-track"><div class="progress-bar" id="genBar2" style="width:25%"></div></div>' +
-      '<span class="gen-pct" id="genPct">' + (total>1?'25%':'…') + '</span>' +
+      '<div class="progress-track"><div class="progress-bar" id="genBar2" style="width:8%"></div></div>' +
+      '<span class="gen-pct" id="genPct">8%</span>' +
     '</div>' +
-    '<div class="gen-tip" id="genTip">' + curPack.name + ' · ' + m.name + ' · 共 ' + total + ' 张 · ' + sizeText + '</div>' +
+    '<div class="gen-tip" id="genTip">' + curPack.name + ' · ' + m.name + ' · 任务已提交，生成中…</div>' +
     '<div class="gen-cancel-row"><button class="btn btn-ghost btn-sm" onclick="cancelGen(\'' + recId + '\')">取消生成</button></div>';
-  refreshProgress(0);
+  // 平滑进度：每 700ms 小幅爬升，封顶到当前真实上限，每张真实完成后校准
+  simTimer = setInterval(()=>{
+    if(taskId !== studioTaskSeq){ stopSim(); return; }
+    const bar = $('#genBar2'); if(!bar){ stopSim(); return; }
+    const cur = parseFloat(bar.style.width) || 0;
+    const cap = Math.min(97, realCap + (total>1 ? 75/total : 0) - 2);
+    const next = Math.min(cap, cur + 0.8 + Math.random()*1.6);
+    const secs = Math.round((Date.now()-startTs)/1000);
+    bar.style.width = next + '%';
+    const pctEl = $('#genPct'); if(pctEl) pctEl.textContent = Math.round(next) + '%';
+    const tip = $('#genTip'); if(tip) tip.textContent = curPack.name + ' · ' + m.name + ' · ' + stepText + ' · 已用 ' + secs + 's';
+  }, 700);
   const renderFinish = (urls, statusText, finishedCount)=>{
+    stopSim();
+    const secs = Math.round((Date.now()-startTs)/1000);
     updateGenRecord(recId, urls, statusText, !realOk);
     delete pendingGen[recId];
     if(taskId !== studioTaskSeq) return; // 旧任务只在历史更新，不抢结果区
     if(statusText === '失败'){
-      $('#studioResult').innerHTML = '<div class="gen-fail"><svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5h.01"/></svg><div>生成失败，请检查模型配置后重试</div></div>';
-      $('#studioResultMeta').textContent = m.name + ' · 生成失败';
+      $('#studioResult').innerHTML = '<div class="gen-fail"><svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5h.01"/></svg><div>生成失败，请检查模型配置后重试（用时 ' + secs + 's）</div></div>';
+      $('#studioResultMeta').textContent = m.name + ' · 生成失败 · 用时 ' + secs + 's';
       $('#btnRedo').disabled = false;
       return;
     }
@@ -3122,9 +3147,9 @@ function runStudioGen(){
     else if(statusText==='部分成功'){ moreTxt = '已取消，完成 ' + finishedCount + '/' + count + ' 张（已完成的图片可正常下载）'; }
     else if(statusText==='已取消'){ moreTxt = '已取消，未生成任何图片'; }
     $('#studioResult').innerHTML = '<div class="result-grid">' + tiles + '</div>' + (moreTxt ? '<div class="result-more">' + moreTxt + '</div>' : '');
-    $('#studioResultMeta').textContent = m.name + ' · ' + (statusText==='成功' ? ('已生成 ' + finishedCount + ' 张' + (realOk ? '（模型返回）' : '')) : statusText);
+    $('#studioResultMeta').textContent = m.name + ' · ' + (statusText==='成功' ? ('已生成 ' + finishedCount + ' 张' + (realOk ? '（模型返回）' : '') + ' · 用时 ' + secs + 's') : statusText);
     $('#btnRedo').disabled = false;
-    toast(curPack.name + '：' + (statusText==='成功' ? ('已生成 ' + finishedCount + ' 张' + (realOk ? '' : '（原型演示）') + (extra ? '，补充内容已置于原提示词之前' : '')) : (statusText==='部分成功' ? ('已取消，完成 ' + finishedCount + '/' + count + ' 张') : statusText)));
+    toast(curPack.name + '：' + (statusText==='成功' ? ('已生成 ' + finishedCount + ' 张' + (realOk ? '' : '（原型演示）') + '，用时 ' + secs + 's' + (extra ? '，补充内容已置于原提示词之前' : '')) : (statusText==='部分成功' ? ('已取消，完成 ' + finishedCount + '/' + count + ' 张') : statusText)));
   };
   // 逐张串行生成：当前张生成完成后才检查取消，后续未开始的张停止
   let doneUrls = [];
