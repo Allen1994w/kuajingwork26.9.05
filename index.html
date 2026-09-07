@@ -2056,7 +2056,6 @@ function navigate(){
   if(vb) vb.style.display='none';
   const isAdminNow = state.isAdmin || (me && me.role==='admin');
   if(r==='admin' && !isAdminNow){
-    toast('暂无管理员权限');
     r = 'imagegen';
     if(location.hash !== '#/imagegen'){ history.replaceState(null,'','#/imagegen'); }
   }
@@ -2104,7 +2103,7 @@ if(!location.hash) location.hash = '#/imagegen';
 /* ============ 管理员可见性 ============ */
 function applyAdminUI(){
   const show = state.isAdmin || (me && me.role==='admin');
-  $('#navAdmin').hidden = !show;
+  const na=$('#navAdmin'); if(na) na.style.display = show?'':'none';
 }
 applyAdminUI();
 function toggleAdmin(el){
