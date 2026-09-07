@@ -6297,15 +6297,24 @@ function calcImageCost(count){ return Math.max(1, count|0) * ((sysCfg&&sysCfg.im
 function calcVideoCost(duration){ return Math.max(1, duration|0) * ((sysCfg&&sysCfg.videoCost)||2); }
 function deductPoints(type, count, duration, prompt, packName, modeName){
   if(!me){ return {ok:false, cost:0, reason:'请先登录'}; }
-  if(me.role==='admin'){ return {ok:true, cost:0, reason:'管理员免积分'}; }
   const cost = type==='video' ? calcVideoCost(duration) : calcImageCost(count);
+  const detail = type==='video'
+    ? (modeName||'视频') + ' · ' + duration + '秒 · ' + (prompt||'').slice(0,40)
+    : (modeName||'生图') + ' · ' + count + '张 · ' + (prompt||'').slice(0,40);
+  // 管理员免积分：仍记录一条消费明细（0积分+免积分标注），便于后台监控生成动作
+  if(me.role==='admin'){
+    orders.unshift({
+      id:'o'+Date.now(), userId:me.id, type:'consume',
+      title: detail, points: 0, amount:0, status:'paid', time:fmtNow(),
+      meta:{ genType:type, count:count, duration:duration, prompt:prompt, pack:packName, mode:modeName, cost:0, free:true }
+    });
+    jsave(K_ORDERS, orders);
+    return {ok:true, cost:0, reason:'管理员免积分'};
+  }
   if(me.points < cost){ return {ok:false, cost, reason:'积分不足，需 '+cost+' 积分，当前 '+me.points+' 积分'}; }
   me.points -= cost;
   const u = users.find(x=>x.id===me.id); if(u) u.points = me.points;
   jsave(K_USERS, users);
-  const detail = type==='video'
-    ? (modeName||'视频') + ' · ' + duration + '秒 · ' + (prompt||'').slice(0,40)
-    : (modeName||'生图') + ' · ' + count + '张 · ' + (prompt||'').slice(0,40);
   orders.unshift({
     id:'o'+Date.now(), userId:me.id, type:'consume',
     title: detail, points: cost, amount:0, status:'paid', time:fmtNow(),
@@ -6436,10 +6445,10 @@ function openUserLedger(id){
     ${rows.length?rows.map(o=>{
       const isConsume = o.type==='consume';
       const meta = o.meta||{};
-      const metaTxt = isConsume && meta.genType ? ('<div class="or-time" style="color:var(--danger);margin-top:2px">'+(meta.genType==='video'?'视频':'图片')+(meta.duration?' · '+meta.duration+'秒':'')+(meta.count?' · '+meta.count+'张':'')+(meta.pack?' · '+meta.pack:'')+(meta.mode?' / '+meta.mode:'')+'</div>') : '';
+      const metaTxt = isConsume && meta.genType ? ('<div class="or-time" style="color:var(--danger);margin-top:2px">'+(meta.genType==='video'?'视频':'图片')+(meta.duration?' · '+meta.duration+'秒':'')+(meta.count?' · '+meta.count+'张':'')+(meta.pack?' · '+meta.pack:'')+(meta.mode?' / '+meta.mode:'')+(meta.free?' · <span style="color:var(--success)">管理员免积分</span>':'')+'</div>') : '';
       return `<div class="order-row"><span class="or-ic">${isConsume?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2.5l2.2 4.6 5 .8-3.6 3.5.9 5-4.5-2.4-4.5 2.4.9-5L4.8 7.9l5-.8z"/></svg>':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>'}</span>
         <div class="or-main"><div class="or-title" style="${isConsume?'color:var(--danger)':''}">${o.title||'积分充值'}</div>${metaTxt}<div class="or-time">${o.time}</div></div>
-        <div class="or-pts" style="${isConsume?'color:var(--danger);font-weight:700':''}">${isConsume?'-'+o.points:'+'+o.points}</div>
+        <div class="or-pts" style="${isConsume?'color:var(--danger);font-weight:700':''}">${isConsume?(o.points?('-'+o.points):'免'):'+'+o.points}</div>
         <div class="or-amount">${o.amount?'¥'+o.amount.toFixed(2):''}</div>
         <span class="key-badge ${o.status==='paid'?'on':(o.status==='pending'?'off':'')}" style="${o.status==='closed'?'background:#EEF3F7;color:#8A99A8':''}">${st[o.status]||o.status}</span>
       </div>`;}).join(''):'<div class="his-empty">暂无记录</div>'}
