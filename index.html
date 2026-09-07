@@ -714,7 +714,7 @@ textarea{resize:vertical;min-height:86px;line-height:1.6}
 .cm-head .cm-sub{font-size:12px;color:var(--text-muted);margin-top:3px}
 .cm-body{padding:20px 22px;overflow:auto}
 .cm-foot{padding:14px 22px;border-top:1px solid #EEF2F6;display:flex;justify-content:flex-end;gap:10px;background:#FBFCFE}
-.cm-close{background:#F0F4F8;border:none;width:32px;height:32px;border-radius:9px;cursor:pointer;color:var(--text-muted);font-size:18px;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.cm-close{background:#F1F5F9;border:1px solid #E2E8F0;width:34px;height:34px;border-radius:10px;cursor:pointer;color:#64748B;font-size:20px;font-weight:300;display:flex;align-items:center;justify-content:center;transition:all .15s;line-height:1}
 .cm-close:hover{background:#E3EAf1;color:var(--ink-900)}
 .order-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
 .order-row:last-child{border-bottom:none}
@@ -6990,10 +6990,10 @@ function renderAdmHistory(){
     </div>
     <div class="panel" style="padding:0;overflow:hidden"><table class="tbl"><thead><tr><th style="width:60px">缩略图</th><th>用户</th><th>类型</th><th>技能包</th><th>用户输入</th><th>数量</th><th>时间</th><th style="width:170px">操作</th></tr></thead>
       <tbody>${pageList.map(h=>{
-        const thumb = (h.images&&h.images[0]) ? (h.type==='video'
+        const thumb = h.type==='ops' ? hisThumb(h) : ((h.images&&h.images[0]) ? (h.type==='video'
           ? '<div style="position:relative;width:48px;height:48px;cursor:pointer" onclick="event.stopPropagation();toggleVideoThumb(this)"><video muted preload="metadata" playsinline src="'+h.images[0]+'" style="width:48px;height:48px;object-fit:cover;border-radius:6px;display:block"></video><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.35);border-radius:6px;color:#fff"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span></div>'
           : '<img src="'+h.images[0]+'" style="width:48px;height:48px;object-fit:cover;border-radius:6px;cursor:zoom-in" onclick="event.stopPropagation();openLightbox(\''+h.images[0]+'\')">')
-          : '<div style="width:48px;height:48px;border-radius:6px;background:var(--bg-soft);display:flex;align-items:center;justify-content:center;color:var(--text-faint);font-size:11px">无</div>';
+          : '<div style="width:48px;height:48px;border-radius:6px;background:var(--bg-soft);display:flex;align-items:center;justify-content:center;color:var(--text-faint);font-size:11px">无</div>');
         return `<tr>
         <td>${thumb}</td>
         <td><span class="t-avatar">${(userOf(h.userId)||'?').charAt(0)}</span>${userOf(h.userId)}</td>
@@ -7185,9 +7185,23 @@ async function exportFullBackup(){
 }
 function openContactModal(){
   const c=(sysCfg&&sysCfg.contact)||{};
-  const qr = c.qrCode ? '<img class="contact-qr" src="'+c.qrCode+'">' : '<div class="contact-qr-empty">暂未设置二维码</div>';
-  const wechat = c.wechat ? '<div style="font-size:13px;color:var(--text-muted);margin-top:16px">微信号</div><div style="font-size:22px;font-weight:800;color:var(--ink-900);margin:4px 0 14px;letter-spacing:1px">'+escHtml(c.wechat)+'</div><button class="btn btn-primary btn-sm" onclick="copyWechat()">复制微信号</button>' : '<div style="font-size:13px;color:var(--text-muted);margin-top:16px">暂未设置微信号</div>';
-  renderModal('联系负责人','扫码添加微信，获取海外仓定制方案','<div style="text-align:center;padding:8px 0">'+qr+wechat+'</div>',[{label:'关闭',cls:'btn btn-ghost',act:'close'}]);
+  const qr = c.qrCode
+    ? '<img src="'+c.qrCode+'" style="width:200px;height:200px;border-radius:12px;display:block;margin:0 auto;object-fit:cover;border:1px solid #E2E8F0">'
+    : '<div style="width:200px;height:200px;border:2px dashed #CBD5E1;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#94A3B8;font-size:13px;margin:0 auto">暂未设置二维码</div>';
+  const wechatRow = c.wechat
+    ? '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px">'
+      + '<div><div style="font-size:12px;color:#94A3B8;margin-bottom:5px">联系方式</div>'
+      + '<div style="font-size:22px;font-weight:800;color:#1A1B1C;letter-spacing:.5px">'+escHtml(c.wechat)+'</div></div>'
+      + '<button class="btn btn-soft btn-sm" onclick="copyWechat()" style="display:flex;align-items:center;gap:5px;flex-shrink:0;font-weight:600">'
+      + '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>复制</button></div>'
+    : '<div style="font-size:13px;color:#94A3B8">暂未设置微信号</div>';
+  const body = '<div style="padding:2px 0 6px">'
+    + wechatRow
+    + '<div style="height:1px;background:#EEF2F6;margin:18px 0"></div>'
+    + qr
+    + '<div style="text-align:center;font-size:12.5px;color:#94A3B8;margin-top:12px">使用微信扫一扫</div>'
+    + '</div>';
+  renderModal('联系负责人','添加时，请备注问题',body,[]);
 }
 function copyWechat(){
   const c=(sysCfg&&sysCfg.contact)||{};
