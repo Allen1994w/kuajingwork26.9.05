@@ -4344,11 +4344,35 @@ async function callTextModel(prompt, tc){
   } catch(e) {
     // CORS 错误时尝试代理
     if(e.message && (e.message.indexOf('Failed to fetch') > -1 || e.message.indexOf('CORS') > -1 || e.message.indexOf('NetworkError') > -1)){
-      const proxyUrl = 'https://corsproxy.io/?url=' + encodeURIComponent(endpoint);
+      // 优先本地 CORS 代理（需先启动 local_proxy.py，http://127.0.0.1:8788）
       try {
-        d = await tryFetch(proxyUrl);
-      } catch(e2) {
-        throw new Error('接口调用失败（直连和代理均失败）：' + (e2.message || e2));
+        const lr = await fetch('http://127.0.0.1:8788', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Proxy-Target': endpoint,
+            'Authorization': 'Bearer ' + (tc.apiKey || '')
+          },
+          body: JSON.stringify(body)
+        });
+        if(!lr.ok){
+          // 代理可达但上游返回错误（如503服务不可用）：直接抛出明确错误，不误导性回退
+          const errTxt = await lr.text().catch(()=>'');
+          throw new Error('文字模型接口返回 HTTP ' + lr.status + '：' + errTxt.slice(0,150) + '。请检查模型服务是否可用、接口地址与密钥是否正确');
+        }
+        d = await lr.json();
+      } catch(e1) {
+        if(e1.message && (e1.message.indexOf('Failed to fetch') > -1 || e1.message.indexOf('NetworkError') > -1 || e1.message.indexOf('CORS') > -1)){
+          // 本地代理本身连不上（代理未启动）→ 公共代理兜底
+          const proxyUrl = 'https://corsproxy.io/?url=' + encodeURIComponent(endpoint);
+          try {
+            d = await tryFetch(proxyUrl);
+          } catch(e2) {
+            throw new Error('接口调用失败（直连和本地代理均失败）：' + (e2.message || e2) + '。请确认已启动 local_proxy.py 且模型接口地址/密钥正确');
+          }
+        } else {
+          throw e1;
+        }
       }
     } else {
       throw e;
@@ -4658,13 +4682,25 @@ function updateSorftimeStatus(){
 }
 
 /* ============ Sorftime 选品数据接口 ============ */
+async function sorftimeFetch(url, body){
+  try{
+    return await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream' },
+      body: body
+    });
+  }catch(e){ return null; }
+}
 async function callSorftimeTool(toolName, args, apiKey){
-  const url = 'https://mcp.sorftime.com?key=' + encodeURIComponent(apiKey);
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream' },
-    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: toolName, arguments: args } })
-  });
+  const endpoint = ((modelCfg && modelCfg.sorftime && modelCfg.sorftime.endpoint) || 'https://mcp.sorftime.com').replace(/\/+$/,'');
+  const url = endpoint + '?key=' + encodeURIComponent(apiKey);
+  const body = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: toolName, arguments: args } });
+  let res = await sorftimeFetch(url, body);
+  // 浏览器跨域(CORS)或网络失败时，自动回退本地代理 http://127.0.0.1:8787（需先启动 sorftime_proxy.py）
+  if(!res && endpoint.indexOf('127.0.0.1:8787') === -1){
+    res = await sorftimeFetch('http://127.0.0.1:8787?key=' + encodeURIComponent(apiKey), body);
+  }
+  if(!res) throw new Error('Sorftime 无法连接（浏览器跨域限制或网络不通），请启动本地代理 sorftime_proxy.py 后重试');
   const text = await res.text();
   // 解析 SSE 或 JSON
   let data;
@@ -6646,12 +6682,11 @@ async function testModel(key){
   if(key==='sorftime'){
     if(!cfg.apiKey){ toast('请填写 Sorftime MCP Key'); return; }
     toast(nm+' 测试中…');
+    const body=JSON.stringify({ jsonrpc:'2.0', id:1, method:'tools/list' });
+    let res=await sorftimeFetch('https://mcp.sorftime.com?key='+encodeURIComponent(cfg.apiKey), body);
+    if(!res){ res=await sorftimeFetch('http://127.0.0.1:8787?key='+encodeURIComponent(cfg.apiKey), body); }
+    if(!res){ toast(nm+' 连接失败：浏览器跨域限制，请启动本地代理 sorftime_proxy.py（http://127.0.0.1:8787）后重试'); return; }
     try{
-      const res=await fetch('https://mcp.sorftime.com?key='+encodeURIComponent(cfg.apiKey),{
-        method:'POST',
-        headers:{ 'Content-Type':'application/json', 'Accept':'application/json, text/event-stream' },
-        body:JSON.stringify({ jsonrpc:'2.0', id:1, method:'tools/list' })
-      });
       const text=await res.text();
       if(text.indexOf('NotAuthorization')>-1 || text.indexOf('Authentication required')>-1){
         toast(nm+' 连接失败：Key 无效或未授权');
