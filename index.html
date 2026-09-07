@@ -493,7 +493,7 @@ textarea{resize:vertical;min-height:86px;line-height:1.6}
 .about-item .v{color:var(--ink-900);font-weight:500}
 
 /* ============ Toast（统一右下角显眼提示） ============ */
-#toasts{position:fixed;right:26px;bottom:34px;z-index:300;display:flex;flex-direction:column;gap:10px;align-items:flex-end}
+#toasts{position:fixed;right:26px;bottom:34px;z-index:700;display:flex;flex-direction:column;gap:10px;align-items:flex-end}
 .toast{
   background:linear-gradient(135deg,#2A3546,#1B2432);color:#fff;font-size:14px;font-weight:500;padding:13px 19px;border-radius:12px;
   box-shadow:0 10px 30px rgba(15,30,44,.32);display:flex;align-items:center;gap:9px;animation:tsIn .28s ease;
@@ -743,7 +743,7 @@ textarea{resize:vertical;min-height:86px;line-height:1.6}
 .login-footer{text-align:center;margin-top:18px;font-size:13px;color:#94a3b8}
 .login-footer a{color:#0e9488;text-decoration:none;font-weight:600;margin-left:4px}
 .login-footer a:hover{text-decoration:underline}
-.cbe-mask{position:fixed;inset:0;background:rgba(15,30,44,.5);z-index:240;display:none;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(2px)}
+.cbe-mask{position:fixed;inset:0;background:rgba(15,30,44,.5);z-index:600;display:none;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(2px)}
 .cbe-mask.show{display:flex}
 .cbe-modal{background:#fff;border-radius:18px;width:min(580px,92vw);max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 30px 70px rgba(10,26,44,.34);border:1px solid rgba(203,213,225,.6)}
 .cm-head{position:relative;display:flex;align-items:center;justify-content:space-between;padding:18px 22px 16px;border-bottom:1px solid #EEF2F6;background:linear-gradient(180deg,#FBFDFE,#FFFFFF)}
@@ -875,7 +875,7 @@ textarea.prompt-area{min-height:150px;font-size:12px;line-height:1.65;color:#2A3
         <div class="login-subtitle">Cross-border Toolkit</div>
       </div>
     </div>
-    <div class="login-desc">生图 · 视频 · 运营 · 海外仓 一站式工作台</div>
+    <div class="login-desc">生图 · 视频 · 运营 一站式工作台</div>
     <div class="login-error" id="loginError" style="display:none"></div>
     <div class="login-field">
       <div class="login-label">邮箱</div>
@@ -883,9 +883,11 @@ textarea.prompt-area{min-height:150px;font-size:12px;line-height:1.65;color:#2A3
     </div>
     <div class="login-field">
       <div class="login-label">密码</div>
-      <div style="display:flex;gap:8px">
-        <input type="password" id="loginPassword" placeholder="请输入密码" style="flex:1" onkeydown="if(event.key==='Enter')doLogin()">
-        <button type="button" class="btn btn-ghost btn-sm" onclick="togglePwdVisibility('loginPassword',this)" style="flex-shrink:0;min-width:60px">显示</button>
+      <div style="position:relative">
+        <input type="password" id="loginPassword" placeholder="请输入密码" style="padding-right:42px" onkeydown="if(event.key==='Enter')doLogin()">
+        <button type="button" id="loginPwdEye" onclick="toggleLoginPwd()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#94a3b8;padding:4px;display:flex;align-items:center;justify-content:center">
+          <svg id="loginEyeIcon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
       </div>
     </div>
     <button class="login-btn" onclick="doLogin()">登 录</button>
@@ -6504,6 +6506,15 @@ function initAccount(){
     jsave(K_USERS,users); jsave(K_ORDERS,orders); jsave(K_CODES,codes); jsave(K_PLANS,plans);
   } else { users=jload(K_USERS,[]); }
   migratePerms();
+  // 密码字段迁移：旧用户数据没有password，补上默认密码
+  let needSavePwd=false;
+  users.forEach(function(u){
+    if(!u.password){
+      u.password = u.role==='admin' ? 'admin123' : 'kj123456';
+      needSavePwd=true;
+    }
+  });
+  if(needSavePwd){ jsave(K_USERS,users); }
   me = users.find(u=>u.id===localStorage.getItem(K_ME)) || null;
   if(!me){ showLoginPage(); } else { hideLoginPage(); }
   orders=jload(K_ORDERS,orders); codes=jload(K_CODES,codes); plans=jload(K_PLANS,plans);
@@ -6607,6 +6618,18 @@ function doLogin(){
   toast('欢迎回来，'+u.name);
   if(location.hash==='#/admin' && u.role!=='admin'){ location.hash='#/imagegen'; }
 }
+function toggleLoginPwd(){
+  const el=document.getElementById('loginPassword');
+  const icon=document.getElementById('loginEyeIcon');
+  if(!el) return;
+  if(el.type==='password'){
+    el.type='text';
+    icon.innerHTML='<path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
+  } else {
+    el.type='password';
+    icon.innerHTML='<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+  }
+}
 function openLoginContact(){
   const lc=(sysCfg&&sysCfg.loginContact)||{};
   const qr = lc.qrCode
@@ -6616,7 +6639,7 @@ function openLoginContact(){
     ? '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px"><div><div style="font-size:12px;color:#94A3B8;margin-bottom:5px">管理员微信</div><div style="font-size:22px;font-weight:800;color:#1A1B1C">'+escHtml(lc.wechat)+'</div></div><button class="btn btn-soft btn-sm" onclick="copyText(\''+escHtml(lc.wechat)+'\')" style="display:flex;align-items:center;gap:5px;flex-shrink:0"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>复制</button></div>'
     : '<div style="font-size:13px;color:#94A3B8">暂未设置管理员微信</div>';
   const body = '<div style="padding:2px 0 6px">'+wechatRow+'<div style="height:1px;background:#EEF2F6;margin:18px 0"></div>'+qr+'<div style="text-align:center;font-size:12.5px;color:#94A3B8;margin-top:12px">使用微信扫一扫</div></div>';
-  renderModal('联系管理员','添加时，请备注「开通账号」',body,[]);
+  renderModal('联系管理员','添加时，请备注「开通账号」',body,[{label:'关闭',cls:'btn btn-ghost',act:'close'}]);
 }
 function copyText(t){ if(navigator.clipboard){ navigator.clipboard.writeText(t); } else { const ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); } toast('已复制到剪贴板'); }
 function logoutAccount(){
