@@ -7031,6 +7031,18 @@ function renderSysSettings(){
         <div class="field"><div class="field-label">单图上传上限 (MB)</div><input type="number" id="sf_upload" value="${sysCfg.maxUploadMB}" min="1" max="20"></div>
       </div>
       <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:14px;border-top:1px solid var(--border);margin-top:16px"><button class="btn btn-primary" onclick="saveSys()">保存设置</button></div></div></div>
+    <div class="panel" style="margin-top:16px"><div class="panel-head"><h3>联系方式设置</h3><span class="sub">前台「联系负责人」弹窗内容</span></div>
+      <div class="panel-body">
+        <div class="form-grid" style="grid-template-columns:1fr 1fr">
+          <div class="field"><div class="field-label">微信号</div><input id="sf_wechat" value="${(sysCfg.contact||{}).wechat||''}" placeholder="如：wx_xxx"></div>
+        </div>
+        <div class="field" style="margin-top:12px">
+          <div class="field-label">微信二维码图片</div>
+          <input type="file" id="sf_qrcode_file" accept="image/*" style="margin-bottom:10px" onchange="previewQrCode(this)">
+          <div id="sf_qrcode_preview_wrap">${(sysCfg.contact||{}).qrCode?'<img id="sf_qrcode_preview" src="'+(sysCfg.contact||{}).qrCode+'" style="width:140px;height:140px;border-radius:10px;border:1px solid var(--border);object-fit:cover">':'<div id="sf_qrcode_preview" style="width:140px;height:140px;border:2px dashed var(--border);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:12px">未上传</div>'}</div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:14px;border-top:1px solid var(--border);margin-top:16px"><button class="btn btn-primary" onclick="saveContact()">保存联系方式</button></div>
+      </div></div>
     <div class="panel" style="margin-top:16px"><div class="panel-head"><h3>数据备份与恢复</h3><span class="sub">Backup & Restore</span></div>
       <div class="panel-body">
         <div style="color:var(--text-muted);font-size:13px;margin-bottom:14px;line-height:1.7">所有用户数据（历史记录、账号、模型配置、积分等）存储在浏览器 localStorage 中，不会随代码上传到 GitHub。建议定期导出备份，换电脑或清空浏览器数据后可导入恢复。</div>
@@ -7045,18 +7057,6 @@ function renderSysSettings(){
           <span style="color:var(--danger);font-size:12.5px">导入将覆盖当前所有数据，操作不可撤销</span>
         </div>
         <div style="margin-top:10px;font-size:12px;color:var(--text-faint)">轻量备份：仅元数据+URL，文件小；完整备份：额外打包所有图片/视频原文件，文件较大但可永久归档</div>
-      </div></div>
-    <div class="panel" style="margin-top:16px"><div class="panel-head"><h3>联系方式设置</h3><span class="sub">前台「联系负责人」弹窗内容</span></div>
-      <div class="panel-body">
-        <div class="form-grid" style="grid-template-columns:1fr 1fr">
-          <div class="field"><div class="field-label">微信号</div><input id="sf_wechat" value="${(sysCfg.contact||{}).wechat||''}" placeholder="如：wx_xxx"></div>
-        </div>
-        <div class="field" style="margin-top:12px">
-          <div class="field-label">微信二维码图片</div>
-          <input type="file" id="sf_qrcode_file" accept="image/*" style="margin-bottom:10px" onchange="previewQrCode(this)">
-          <div id="sf_qrcode_preview_wrap">${(sysCfg.contact||{}).qrCode?'<img id="sf_qrcode_preview" src="'+(sysCfg.contact||{}).qrCode+'" style="width:140px;height:140px;border-radius:10px;border:1px solid var(--border);object-fit:cover">':'<div id="sf_qrcode_preview" style="width:140px;height:140px;border:2px dashed var(--border);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:12px">未上传</div>'}</div>
-        </div>
-        <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:14px;border-top:1px solid var(--border);margin-top:16px"><button class="btn btn-primary" onclick="saveContact()">保存联系方式</button></div>
       </div></div>`;
 }
 function dataStats(){
