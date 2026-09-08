@@ -6110,7 +6110,7 @@ function renderCalendar(){
 function renderHistory(){
   const list = $('#hisList');
   if(!list) return;
-  const rows = DB.filter(r => (hisFilter==='all' || r.type===hisFilter) && (!hisKeyword || (r.title||'').indexOf(hisKeyword) > -1 || (r.pack||'').indexOf(hisKeyword) > -1));
+  const rows = DB.filter(r => r.userId === (me?me.id:null) && (hisFilter==='all' || r.type===hisFilter) && (!hisKeyword || (r.title||'').indexOf(hisKeyword) > -1 || (r.pack||'').indexOf(hisKeyword) > -1));
   const total = rows.length;
   const totalPages = Math.max(1, Math.ceil(total / hisPageSize));
   if(hisPage > totalPages) hisPage = totalPages;
