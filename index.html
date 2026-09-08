@@ -6575,6 +6575,9 @@ function initAccount(){
   if(!sysCfg.opsCosts || typeof sysCfg.opsCosts!=='object') sysCfg.opsCosts={};
   ['竞品分析','买家心声','选品自动化','Listing优化'].forEach(k=>{ if(!(sysCfg.opsCosts[k]>0)) sysCfg.opsCosts[k]=(k==='选品自动化'||k==='Listing优化')?10:5; });
   if(!sysCfg.contact || typeof sysCfg.contact!=='object') sysCfg.contact={ wechat:'', qrCode:'' };
+  if(!sysCfg.loginContact || typeof sysCfg.loginContact!=='object') sysCfg.loginContact={ wechat:'', qrCode:'' };
+  if(!sysCfg.loginContactSub) sysCfg.loginContactSub='添加时，请备注「开通账号」';
+  if(!sysCfg.contactSub) sysCfg.contactSub='7年海外仓经验，欢迎添加备用';
   packToggle=jload(K_PT,{ image:{}, video:{}, ops:{} });
   // 清理旧数据：只保留主玩法的key（pack_/v_/o_前缀），删除细分玩法的旧key
   ['image','video','ops'].forEach(function(g){
@@ -6694,7 +6697,7 @@ function openLoginContact(){
     ? '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px"><div><div style="font-size:12px;color:#94A3B8;margin-bottom:5px">管理员微信</div><div style="font-size:22px;font-weight:800;color:#1A1B1C">'+escHtml(lc.wechat)+'</div></div><button class="btn btn-soft btn-sm" onclick="copyText(\''+escHtml(lc.wechat)+'\')" style="display:flex;align-items:center;gap:5px;flex-shrink:0"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>复制</button></div>'
     : '<div style="font-size:13px;color:#94A3B8">暂未设置管理员微信</div>';
   const body = '<div style="padding:2px 0 6px">'+wechatRow+'<div style="height:1px;background:#EEF2F6;margin:18px 0"></div>'+qr+'<div style="text-align:center;font-size:12.5px;color:#94A3B8;margin-top:12px">使用微信扫一扫</div></div>';
-  renderModal('联系管理员','添加时，请备注「开通账号」',body,[{label:'关闭',cls:'btn btn-ghost',act:'close'}]);
+  renderModal('联系管理员',(sysCfg.loginContactSub||'添加时，请备注「开通账号」'),body,[{label:'关闭',cls:'btn btn-ghost',act:'close'}]);
 }
 function copyText(t){ if(navigator.clipboard){ navigator.clipboard.writeText(t); } else { const ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); } toast('已复制到剪贴板'); }
 function logoutAccount(){
@@ -7355,6 +7358,7 @@ function renderSysSettings(){
       <div class="panel-body">
         <div class="form-grid" style="grid-template-columns:1fr 1fr">
           <div class="field"><div class="field-label">管理员微信</div><input id="lc_wechat" value="${(sysCfg.loginContact||{}).wechat||''}" placeholder="如：admin_wx"></div>
+          <div class="field"><div class="field-label">弹窗副标题</div><input id="lc_subtitle" value="${sysCfg.loginContactSub||''}" placeholder="如：添加时，请备注「开通账号」"></div>
         </div>
         <div class="field" style="margin-top:12px">
           <div class="field-label">管理员微信二维码</div>
@@ -7367,6 +7371,7 @@ function renderSysSettings(){
       <div class="panel-body">
         <div class="form-grid" style="grid-template-columns:1fr 1fr">
           <div class="field"><div class="field-label">微信号</div><input id="sf_wechat" value="${(sysCfg.contact||{}).wechat||''}" placeholder="如：wx_xxx"></div>
+          <div class="field"><div class="field-label">弹窗副标题</div><input id="sf_subtitle" value="${sysCfg.contactSub||''}" placeholder="如：7年海外仓经验，欢迎添加备用"></div>
         </div>
         <div class="field" style="margin-top:12px">
           <div class="field-label">微信二维码图片</div>
@@ -7533,7 +7538,7 @@ function openContactModal(){
     + qr
     + '<div style="text-align:center;font-size:12.5px;color:#94A3B8;margin-top:12px">使用微信扫一扫</div>'
     + '</div>';
-  renderModal('联系负责人','7年海外仓经验，欢迎添加备用',body,[]);
+  renderModal('联系负责人',(sysCfg.contactSub||'7年海外仓经验，欢迎添加备用'),body,[]);
 }
 function copyWechat(){
   const c=(sysCfg&&sysCfg.contact)||{};
@@ -7551,10 +7556,12 @@ function previewQrCode(input){
 }
 function saveLoginContact(){
   const wechat=($('#lc_wechat').value||'').trim();
+  const subtitle=($('#lc_subtitle')?$('#lc_subtitle').value:'').trim();
   const qrEl=document.getElementById('lc_qrcode_preview');
   const qrCode = (qrEl && qrEl.tagName==='IMG') ? qrEl.src : '';
   if(!sysCfg.loginContact) sysCfg.loginContact={};
   sysCfg.loginContact={wechat, qrCode};
+  sysCfg.loginContactSub=subtitle;
   jsave(K_SYS,sysCfg); toast('登录页联系管理员已保存');
 }
 function previewLoginQr(input){
@@ -7568,9 +7575,11 @@ function previewLoginQr(input){
 }
 function saveContact(){
   const wechat=($('#sf_wechat')?$('#sf_wechat').value:'').trim();
+  const subtitle=($('#sf_subtitle')?$('#sf_subtitle').value:'').trim();
   const img=$('#sf_qrcode_preview');
   const qrCode=(img && img.tagName==='IMG' && img.src && img.src.startsWith('data:'))?img.src:'';
   sysCfg.contact={ wechat:wechat, qrCode:qrCode };
+  sysCfg.contactSub=subtitle;
   jsave(K_SYS,sysCfg);
   successToast('联系方式已保存');
 }
