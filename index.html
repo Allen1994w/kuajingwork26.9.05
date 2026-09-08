@@ -114,9 +114,14 @@ h1,h2,h3,h4{font-weight:600}
 .route{display:none}
 .route.active{display:block;animation:routeIn .25s ease}
 @keyframes routeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-.page-head{margin-bottom:20px}
+.page-head{margin-bottom:20px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.page-head .ph-left{flex:1;min-width:0}
 .page-head h1{font-size:22px;font-weight:700;color:var(--ink-900);letter-spacing:.3px}
 .page-head p{color:var(--text-muted);font-size:13.5px;margin-top:4px}
+.page-head .ph-right{flex-shrink:0;padding-top:2px}
+.contact-admin-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:10px;background:linear-gradient(135deg,#F0F9FF,#E0F2FE);color:#0369A1;font-size:13px;font-weight:600;border:1px solid #BAE6FD;cursor:pointer;transition:all .2s;text-decoration:none}
+.contact-admin-btn:hover{background:linear-gradient(135deg,#E0F2FE,#BAE6FD);transform:translateY(-1px);box-shadow:0 4px 12px rgba(14,165,233,.15)}
+.contact-admin-btn svg{width:15px;height:15px}
 
 /* ============ 通用组件 ============ */
 .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
@@ -993,8 +998,16 @@ textarea.prompt-area{min-height:150px;font-size:12px;line-height:1.65;color:#2A3
       <!-- ===== 生图工作台 ===== -->
       <div class="route" data-route="imagegen">
         <div class="page-head">
-          <h1>生图工作台</h1>
-          <p>选择技能包进入对应工作流——每个技能包都有专属的细分玩法、参考图限制与生成规则。</p>
+          <div class="ph-left">
+            <h1>生图工作台</h1>
+            <p>选择技能包进入对应工作流——每个技能包都有专属的细分玩法、参考图限制与生成规则。</p>
+          </div>
+          <div class="ph-right">
+            <a class="contact-admin-btn" onclick="openLoginContact()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
+              联系管理员
+            </a>
+          </div>
         </div>
 
         <!-- 技能包卡片 -->
