@@ -6656,6 +6656,27 @@ function initAccount(){
         me={ id:u.id, name:u.name, email:u.email, role:u.role, points:u.points, expire:u.expire_at||'permanent', perms:u.permissions||[], password:'', avatarChar:(u.name||'?').charAt(0) };
         localStorage.setItem(K_ME,u.id);
         hideLoginPage();
+        // 后端模式：从服务器获取系统配置
+        API.settings.get().then(function(sr){
+          if(sr.ok && sr.data){
+            if(sr.data.models){ modelCfg=sr.data.models; jsave(K_MODEL,modelCfg); }
+            if(sr.data.pack_toggle){ packToggle=sr.data.pack_toggle; jsave(K_PT,packToggle); }
+            if(sr.data.plans){ plans=sr.data.plans; jsave(K_PLANS,plans); }
+            if(sr.data.point_rules){
+              var pr2=sr.data.point_rules;
+              sysCfg.pointRate=pr2.pointRate||0.2; sysCfg.imgCost=pr2.imgCost||1; sysCfg.videoCost=pr2.videoCost||2;
+              if(pr2.opsCosts) sysCfg.opsCosts=pr2.opsCosts;
+              jsave(K_SYS,sysCfg);
+            }
+            if(sr.data.sys_cfg){
+              if(sr.data.sys_cfg.contact) sysCfg.contact=sr.data.sys_cfg.contact;
+              if(sr.data.sys_cfg.loginContact) sysCfg.loginContact=sr.data.sys_cfg.loginContact;
+              if(sr.data.sys_cfg.loginContactSub) sysCfg.loginContactSub=sr.data.sys_cfg.loginContactSub;
+              if(sr.data.sys_cfg.contactSub) sysCfg.contactSub=sr.data.sys_cfg.contactSub;
+              jsave(K_SYS,sysCfg);
+            }
+          }
+        }).catch(function(){});
         renderSideAccount(); renderProfile(); applyAdminUI();
         try{ renderSkillGrid(); }catch(e){}
         try{ renderVideoSkillGrid(); }catch(e){}
@@ -6785,6 +6806,29 @@ function doLogin(){
       errEl.style.display='none';
       $('#loginEmail').value=''; $('#loginPassword').value='';
       hideLoginPage();
+      // 后端模式：从服务器获取系统配置
+      API.settings.get().then(function(sr){
+        if(sr.ok && sr.data){
+          if(sr.data.models){ modelCfg=sr.data.models; jsave(K_MODEL,modelCfg); }
+          if(sr.data.pack_toggle){ packToggle=sr.data.pack_toggle; jsave(K_PT,packToggle); }
+          if(sr.data.plans){ plans=sr.data.plans; jsave(K_PLANS,plans); }
+          if(sr.data.point_rules){
+            var pr=sr.data.point_rules;
+            sysCfg.pointRate=pr.pointRate||0.2; sysCfg.imgCost=pr.imgCost||1; sysCfg.videoCost=pr.videoCost||2;
+            if(pr.opsCosts) sysCfg.opsCosts=pr.opsCosts;
+            jsave(K_SYS,sysCfg);
+          }
+          if(sr.data.sys_cfg){
+            if(sr.data.sys_cfg.contact) sysCfg.contact=sr.data.sys_cfg.contact;
+            if(sr.data.sys_cfg.loginContact) sysCfg.loginContact=sr.data.sys_cfg.loginContact;
+            if(sr.data.sys_cfg.loginContactSub) sysCfg.loginContactSub=sr.data.sys_cfg.loginContactSub;
+            if(sr.data.sys_cfg.contactSub) sysCfg.contactSub=sr.data.sys_cfg.contactSub;
+            jsave(K_SYS,sysCfg);
+          }
+          try{ renderModels(); }catch(e){}
+          try{ renderPacks(); }catch(e){}
+        }
+      }).catch(function(){});
       renderSideAccount(); renderProfile(); applyAdminUI();
       const gs=document.getElementById('genStudio'); if(gs) gs.style.display='none';
       const vs=document.getElementById('videoStudio'); if(vs) vs.style.display='none';
@@ -7208,6 +7252,10 @@ function savePointRules(){
   updateOpsCostHints();
   toast('积分规则已保存，立即生效');
   renderMember();
+
+  if(typeof API!=='undefined' && API.USE_BACKEND){
+    API.settings.savePointRules({ pointRate:sysCfg.pointRate, imgCost:sysCfg.imgCost, videoCost:sysCfg.videoCost, opsCosts:sysCfg.opsCosts }).catch(function(){});
+  }
 }
 
 /* ---- 兑换管理 ---- */
@@ -7415,7 +7463,9 @@ function addModelInList(key){
 }
 function saveModel(){
   ['text','image','video'].forEach(k=>{ if(document.getElementById('mf_'+k+'_provider')) modelCfg[k]=readModelPanel(k); });
-  jsave(K_MODEL,modelCfg); if(document.getElementById('mf_text_provider')) closeModal();
+  jsave(K_MODEL,modelCfg);
+  if(typeof API!=='undefined' && API.USE_BACKEND){ API.settings.saveModels(modelCfg).catch(function(){}); }
+  if(document.getElementById('mf_text_provider')) closeModal();
   renderModels(); toast('模型配置已保存');
 }
 function testCurModel(){ if(curModelEditKey) testModel(curModelEditKey); }
