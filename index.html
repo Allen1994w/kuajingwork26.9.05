@@ -6545,7 +6545,23 @@ function initAccount(){
   });
   if(needSavePwd){ jsave(K_USERS,users); }
   me = users.find(u=>u.id===localStorage.getItem(K_ME)) || null;
-  if(!me){ showLoginPage(); } else { hideLoginPage(); }
+  // 后端模式：通过token恢复登录状态
+  if(typeof API!=='undefined' && API.USE_BACKEND && API.getToken()){
+    API.auth.me().then(function(r){
+      if(r.ok && r.data){
+        const u=r.data;
+        me={ id:u.id, name:u.name, email:u.email, role:u.role, points:u.points, expire:u.expire_at||'permanent', perms:u.permissions||[], password:'', avatarChar:(u.name||'?').charAt(0) };
+        localStorage.setItem(K_ME,u.id);
+        hideLoginPage();
+        renderSideAccount(); renderProfile(); applyAdminUI();
+        try{ renderSkillGrid(); }catch(e){}
+        try{ renderVideoSkillGrid(); }catch(e){}
+        try{ filterOpsCards(); }catch(e){}
+      } else {
+        API.setToken(''); me=null; showLoginPage();
+      }
+    }).catch(function(){ me=null; showLoginPage(); });
+  } else if(!me){ showLoginPage(); } else { hideLoginPage(); }
   orders=jload(K_ORDERS,orders); codes=jload(K_CODES,codes); plans=jload(K_PLANS,plans);
   // 套餐数据迁移：旧格式 bonusDays → 新格式 bonusPoints
   if(plans.length && plans.some(p=>'bonusDays' in p)){
@@ -6655,6 +6671,29 @@ function doLogin(){
   const errEl=$('#loginError');
   if(!email){ errEl.textContent='请输入邮箱地址'; errEl.style.display='block'; return; }
   if(!pwd){ errEl.textContent='请输入密码'; errEl.style.display='block'; return; }
+  // 后端模式：调用API登录
+  if(typeof API!=='undefined' && API.USE_BACKEND){
+    API.auth.login(email,pwd).then(function(r){
+      if(!r.ok){ errEl.textContent=r.error||'登录失败'; errEl.style.display='block'; return; }
+      const u=r.data.user;
+      // 转换为前端格式
+      me={ id:u.id, name:u.name, email:u.email, role:u.role, points:u.points, expire:u.expire_at||'permanent', perms:u.permissions||[], password:'', avatarChar:(u.name||'?').charAt(0) };
+      localStorage.setItem(K_ME,u.id);
+      errEl.style.display='none';
+      $('#loginEmail').value=''; $('#loginPassword').value='';
+      hideLoginPage();
+      renderSideAccount(); renderProfile(); applyAdminUI();
+      const gs=document.getElementById('genStudio'); if(gs) gs.style.display='none';
+      const vs=document.getElementById('videoStudio'); if(vs) vs.style.display='none';
+      try{ renderSkillGrid(); }catch(e){}
+      try{ renderVideoSkillGrid(); }catch(e){}
+      try{ filterOpsCards(); }catch(e){}
+      toast('欢迎回来，'+u.name);
+      if(location.hash==='#/admin' && u.role!=='admin'){ location.hash='#/imagegen'; }
+    });
+    return;
+  }
+  // localStorage模式
   const u=users.find(x=>x.email && x.email.toLowerCase()===email.toLowerCase());
   if(!u){ errEl.textContent='该邮箱未注册，请联系管理员开通账号'; errEl.style.display='block'; return; }
   if(u.password !== pwd){ errEl.textContent='密码错误，请重新输入（注意区分大小写）'; errEl.style.display='block'; return; }
@@ -6706,7 +6745,15 @@ function logoutAccount(){
   renderModal('退出登录','确认退出当前账号？',`<div class="s-desc">退出后将回到未登录状态，可点击「重新登录（演示）」以管理员身份返回。账号由后台注册并设置有效期。</div>`,
     [{label:'取消',cls:'btn btn-ghost',act:'close'},{label:'退出登录',cls:'btn btn-danger',act:'doLogout'}]);
 }
-function doLogout(){ localStorage.removeItem(K_ME); me=null; closeModal(); renderSideAccount(); renderProfile(); applyAdminUI(); showLoginPage(); toast('已退出登录'); }
+function doLogout(){
+  if(typeof API!=='undefined' && API.USE_BACKEND){
+    API.auth.logout().finally(function(){
+      localStorage.removeItem(K_ME); me=null; closeModal(); renderSideAccount(); renderProfile(); applyAdminUI(); showLoginPage(); toast('已退出登录');
+    });
+  } else {
+    localStorage.removeItem(K_ME); me=null; closeModal(); renderSideAccount(); renderProfile(); applyAdminUI(); showLoginPage(); toast('已退出登录');
+  }
+}
 
 /* ---------- 充值 ---------- */
 function openRecharge(){
