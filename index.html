@@ -3511,13 +3511,17 @@ function addGenRecord(m, count, extra, platText, langText, sizeText){
     platform: platText, lang: langText, size: sizeText,
     count: count,
     title: m.name + ' · ' + (platText || '电商'),
-    prompt: extra || '',   // 仅记录用户输入的补充内容，不存完整组装提示词
+    prompt: extra || '',
     userId: me ? me.id : null, userName: me ? me.name : '游客',
     images: [],
     ts: Date.now(), time: fmtNow()
   };
   DB.unshift(rec);
   saveDB(); renderHistory();
+  // 后端模式：同步创建到服务器
+  if(typeof API!=='undefined' && API.USE_BACKEND && me){
+    hisApi.create(rec).catch(function(){});
+  }
   return rec.id;
 }
 /* 生成完成后更新历史记录：成功/部分成功写入已完成图片，失败/已取消清空 */
@@ -3560,12 +3564,16 @@ function updateGenRecord(id, urls, status, demo){
     for(let i=0;i<n;i++) r.images.push(urls && urls[i] ? urls[i] : SAMPLE_IMG);
     r.count = r.images.length;
   } else {
-    r.status = status; // 失败 / 已取消
+    r.status = status;
     r.images = [];
   }
   saveDB(); renderHistory();
+  // 后端模式：同步更新到服务器
+  if(typeof API!=='undefined' && API.USE_BACKEND && me){
+    hisApi.update(id, { images: r.images, status: r.status, count: r.count }).catch(function(){});
+  }
   if((status === '成功' || status === '部分成功') && urls && urls.length){
-    persistRecordImages(id); // 异步转base64永久保存
+    persistRecordImages(id);
   }
 }
 function fmtNow(){
@@ -4138,6 +4146,10 @@ function updateVideoRecord(id, urls, status){
     r.count = r.images.length || (r.count||1);
   } else { r.status = status; r.images = []; r.videoUrl=''; }
   saveDB(); renderHistory();
+  // 后端模式：同步更新到服务器
+  if(typeof API!=='undefined' && API.USE_BACKEND && me){
+    hisApi.update(id, { images: r.images, status: r.status, count: r.count }).catch(function(){});
+  }
 }
 function runVideoGen(){
   if(!curVideoMode){ toast('请先选择视频技能包'); return; }
@@ -4167,6 +4179,8 @@ function runVideoGen(){
     images: [], ts: Date.now(), time: fmtNow()
   };
   DB.unshift(rec); saveDB(); renderHistory();
+  // 后端模式：同步创建到服务器
+  if(typeof API!=='undefined' && API.USE_BACKEND && me){ hisApi.create(rec).catch(function(){}); }
   const vc = modelCfg.video || {};
   if(!vc.status || vc.status!=='on' || !vc.endpoint){
     updateVideoRecord(rec.id, [], '失败');
@@ -5724,6 +5738,67 @@ const HIS_KEY = 'db_history_v2';
 let DB = [];
 try { DB = JSON.parse(localStorage.getItem(HIS_KEY) || '[]') || []; } catch(e){ DB = []; }
 function saveDB(){ try{ localStorage.setItem(HIS_KEY, JSON.stringify(DB)); }catch(e){ toast('历史记录保存失败（存储已满）'); } }
+// 后端模式：历史记录API封装
+var hisApi = {
+  _loading: false,
+  // 从后端获取历史记录列表并更新DB缓存
+  async fetchList(type, keyword, page, pageSize){
+    if(typeof API==='undefined' || !API.USE_BACKEND) return null;
+    const r = await API.history.list(page||1, pageSize||hisPageSize, type||'all', keyword||'', false);
+    if(r.ok && r.data){
+      // 转换为前端格式
+      DB = r.data.list.map(function(item){
+        return {
+          id: item.id, userId: item.user_id, type: item.type, status: item.status,
+          pack: item.pack, mode: item.mode, platform: item.platform, lang: item.language,
+          size: item.size, count: item.count, title: item.title, prompt: item.prompt,
+          images: item.images || [], videoUrl: (item.images && item.images[0]) || '',
+          duration: item.duration, costPoints: item.cost_points,
+          ts: new Date(item.created_at).getTime(), time: fmtHisTime(item.created_at)
+        };
+      });
+      saveDB();
+      return r.data;
+    }
+    return null;
+  },
+  // 创建历史记录
+  async create(record){
+    if(typeof API==='undefined' || !API.USE_BACKEND) return null;
+    const r = await API.history.create({
+      id: record.id, type: record.type, pack: record.pack, mode: record.mode,
+      title: record.title, prompt: record.prompt, images: record.images || [],
+      count: record.count, size: record.size, platform: record.platform,
+      language: record.lang, duration: record.duration, status: record.status || '生成中',
+      cost_points: record.costPoints || 0
+    });
+    return r;
+  },
+  // 更新历史记录
+  async update(id, data){
+    if(typeof API==='undefined' || !API.USE_BACKEND) return null;
+    const r = await API.history.update(id, data);
+    return r;
+  },
+  // 删除历史记录
+  async remove(id){
+    if(typeof API==='undefined' || !API.USE_BACKEND) return null;
+    const r = await API.history.remove(id);
+    return r;
+  }
+};
+// 格式化历史记录时间
+function fmtHisTime(dateStr){
+  if(!dateStr) return '';
+  const d = new Date(dateStr);
+  const now = new Date();
+  const diff = (now - d) / 1000;
+  if(diff < 60) return '刚刚';
+  if(diff < 3600) return Math.floor(diff/60) + '分钟前';
+  if(diff < 86400) return Math.floor(diff/3600) + '小时前';
+  if(diff < 86400*7) return Math.floor(diff/86400) + '天前';
+  return (d.getMonth()+1) + '-' + String(d.getDate()).padStart(2,'0') + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+}
 // 页面刷新后，正在生成的任务已被中断：把遗留的「生成中」记录标记为失败，避免永久悬挂
 DB.forEach(r=>{ if(r && r.status === '生成中') r.status = '失败'; });
 // 首次访问：写入演示记录
@@ -6111,6 +6186,29 @@ function renderCalendar(){
 function renderHistory(){
   const list = $('#hisList');
   if(!list) return;
+  // 后端模式：从API获取
+  if(typeof API!=='undefined' && API.USE_BACKEND && me){
+    if(hisApi._loading) return;
+    hisApi._loading = true;
+    list.innerHTML = '<div class="his-empty"><div class="he-ic"><span class="spin"></span></div>加载中...</div>';
+    hisApi.fetchList(hisFilter, hisKeyword, hisPage, hisPageSize).then(function(data){
+      hisApi._loading = false;
+      if(data){
+        hisTotalCount = data.total;
+        _renderHistoryRows();
+      } else {
+        hisApi._loading = false;
+        _renderHistoryRows();
+      }
+    }).catch(function(){ hisApi._loading = false; _renderHistoryRows(); });
+    return;
+  }
+  _renderHistoryRows();
+}
+var hisTotalCount = 0;
+function _renderHistoryRows(){
+  const list = $('#hisList');
+  if(!list) return;
   const rows = DB.filter(r => r.userId === (me?me.id:null) && (hisFilter==='all' || r.type===hisFilter) && (!hisKeyword || (r.title||'').indexOf(hisKeyword) > -1 || (r.pack||'').indexOf(hisKeyword) > -1));
   const total = rows.length;
   const totalPages = Math.max(1, Math.ceil(total / hisPageSize));
@@ -6136,8 +6234,10 @@ function renderHistory(){
   }).join('');
 
   // 更新分页信息
-  const totalEl = $('#hisTotal'); if(totalEl) totalEl.textContent = total;
-  const pageInfo = $('#hisPageInfo'); if(pageInfo) pageInfo.textContent = hisPage + ' / ' + totalPages;
+  const displayTotal = (typeof API!=='undefined' && API.USE_BACKEND) ? (hisTotalCount || total) : total;
+  const displayTotalPages = Math.max(1, Math.ceil(displayTotal / hisPageSize));
+  const totalEl = $('#hisTotal'); if(totalEl) totalEl.textContent = displayTotal;
+  const pageInfo = $('#hisPageInfo'); if(pageInfo) pageInfo.textContent = hisPage + ' / ' + displayTotalPages;
   const prevBtn = $('#hisPrevBtn'); if(prevBtn) prevBtn.disabled = hisPage<=1;
   const nextBtn = $('#hisNextBtn'); if(nextBtn) nextBtn.disabled = hisPage>=totalPages;
   const pag = $('#hisPagination'); if(pag) pag.style.display = total>0 ? 'flex' : 'none';
@@ -6312,9 +6412,12 @@ function setAsRef(id){
   toast('已设为参考图，自动填入当前工作台');
 }
 function delHistory(id){
-  DB = DB.filter(x=>x.id!==id); saveDB();
-  if(hisDetailId===id) closeHistoryDetail();
-  renderHistory(); toast('已删除该记录');
+  if(!confirm('确定删除这条记录吗？')) return;
+  DB = DB.filter(r=>r.id!==id);
+  saveDB();
+  if(typeof API!=='undefined' && API.USE_BACKEND){ hisApi.remove(id); }
+  renderHistory();
+  toast('已删除');
 }
 function downloadImage(id, all){
   const r = DB.find(x=>x.id===id); if(!r || !r.images || !r.images.length) return;
