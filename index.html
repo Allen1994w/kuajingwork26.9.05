@@ -2078,6 +2078,33 @@ function currentRoute(){
   const h = location.hash.replace(/^#\//,'');
   return ROUTE_TITLES[h] ? h : 'imagegen';
 }
+// 恢复运营子页面的生成状态和结果
+function restoreOpsSubPageState(r){
+  const map = {
+    'competitor': {record:'compCurrentRecord', panel:'compResultPanel', content:'compResultContent', meta:'compResultMeta', render:'renderCompetitorResult', loading:'正在调用文字模型分析竞品，请稍候…'},
+    'buyervoice': {record:'bvCurrentRecord', panel:'bvResultPanel', content:'bvResultContent', meta:'bvResultMeta', render:'renderBuyerVoiceResult', loading:'正在调用文字模型调研买家心声，请稍候…'},
+    'selection': {record:'selCurrentRecord', panel:'selResultPanel', content:'selResultContent', meta:'selResultMeta', render:'renderSelectionResult', loading:'正在调用文字模型分析选品，请稍候…'},
+    'listing': {record:'listingCurrentRecord', panel:'listingResultPanel', content:'listingResultContent', meta:'listingResultMeta', render:'renderListingResult', loading:'正在调用文字模型生成 Listing，请稍候…'}
+  };
+  const cfg = map[r];
+  if(!cfg) return;
+  const rec = window[cfg.record];
+  if(!rec) return;
+  const panel = document.getElementById(cfg.panel);
+  if(!panel) return;
+  panel.style.display = 'block';
+  const meta = document.getElementById(cfg.meta);
+  const content = document.getElementById(cfg.content);
+  if(rec.status === '生成中'){
+    if(meta) meta.textContent = '生成中…';
+    if(content) content.innerHTML = '<div class="gen-loading"><div class="spinner"></div><span>'+cfg.loading+'</span></div>';
+  } else if(rec.report){
+    if(meta) meta.textContent = (rec.status==='成功'?'完成':'失败') + ' · ' + (rec.time||'');
+    if(content && typeof window[cfg.render] === 'function'){
+      window[cfg.render](rec.report);
+    }
+  }
+}
 function navigate(){
   let r = currentRoute();
   const sb = document.getElementById('studioBack');
@@ -2100,7 +2127,7 @@ function navigate(){
   if(r==='admin'){ renderAdminSec(); document.querySelectorAll('.admin-nav').forEach(n=>n.classList.toggle('active',n.dataset.admin===adminSec)); }
   if(r==='profile') renderProfile();
   if(r==='exchange') renderExchange();
-  if(r==='competitor' || r==='buyervoice' || r==='selection' || r==='listing'){ updateOpsCostHints(); document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.route==='ops')); if(r==='selection') setTimeout(updateSorftimeStatus, 100); if(r==='listing') setTimeout(updateListingSorftimeStatus, 100); if(r==='competitor') setTimeout(updateCompSorftimeStatus, 100); } if(r==='ops'){ setTimeout(filterOpsCards, 50); }
+  if(r==='competitor' || r==='buyervoice' || r==='selection' || r==='listing'){ updateOpsCostHints(); document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.route==='ops')); if(r==='selection') setTimeout(updateSorftimeStatus, 100); if(r==='listing') setTimeout(updateListingSorftimeStatus, 100); if(r==='competitor') setTimeout(updateCompSorftimeStatus, 100); setTimeout(function(){ restoreOpsSubPageState(r); }, 50); } if(r==='ops'){ setTimeout(filterOpsCards, 50); }
   // 恢复工作台返回条：若当前路由的工作台仍处于已进入状态，恢复返回按钮
   if(sb && r==='imagegen'){ const gs=document.getElementById('genStudio'); if(gs && gs.style.display==='block'){ sb.style.display='flex'; } else { renderSkillGrid(); } }
   if(vb && r==='video'){ const vs=document.getElementById('videoStudio'); if(vs && vs.style.display==='block'){ vb.style.display='flex'; } else { renderVideoSkillGrid(); } }
