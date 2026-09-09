@@ -5787,6 +5787,38 @@ var hisApi = {
     return r;
   }
 };
+// 后端模式：文件上传封装
+var uploadApi = {
+  // 上传图片到服务器，返回URL
+  async uploadImage(fileOrBase64, filename){
+    if(typeof API==='undefined' || !API.USE_BACKEND) return null;
+    try{
+      const r = await API.upload.image(fileOrBase64, filename||('image_'+Date.now()+'.png'));
+      if(r.ok && r.data && r.data.url) return r.data.url;
+      return null;
+    }catch(e){ return null; }
+  },
+  // 批量上传图片
+  async uploadImages(files){
+    if(typeof API==='undefined' || !API.USE_BACKEND || !files || !files.length) return [];
+    const urls = [];
+    for(let i=0;i<files.length;i++){
+      const url = await this.uploadImage(files[i]);
+      if(url) urls.push(url);
+    }
+    return urls;
+  }
+};
+// 将base64转为File对象
+function base64ToFile(base64, filename){
+  const arr = base64.split(',');
+  const mime = arr[0].match(/:(.*?);/)[1];
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while(n--){ u8arr[n] = bstr.charCodeAt(n); }
+  return new File([u8arr], filename, {type:mime});
+}
 // 格式化历史记录时间
 function fmtHisTime(dateStr){
   if(!dateStr) return '';
@@ -7016,7 +7048,22 @@ function deductPoints(type, count, duration, prompt, packName, modeName){
     : type==='ops'
       ? (modeName||'运营分析') + ' · 1次 · ' + (prompt||'').slice(0,40)
       : (modeName||'生图') + ' · ' + count + '张 · ' + (prompt||'').slice(0,40);
-  // 管理员免积分：仍记录一条消费明细（0积分+免积分标注），便于后台监控生成动作
+  // 后端模式：调用API扣减积分
+  if(typeof API!=='undefined' && API.USE_BACKEND){
+    // 同步先更新本地状态（乐观更新）
+    if(me.role!=='admin' && me.points < cost){ return {ok:false, cost, reason:'积分不足，需 '+cost+' 积分，当前 '+me.points+' 积分'}; }
+    if(me.role!=='admin'){ me.points -= cost; }
+    // 异步同步到后端
+    API.orders.consume({
+      type: type, points: me.role==='admin' ? 0 : cost,
+      title: detail, count: count, duration: duration,
+      prompt: prompt, pack: packName, mode: modeName
+    }).then(function(r){
+      if(r.ok && r.data && r.data.points !== undefined){ me.points = r.data.points; try{ renderSideAccount(); renderProfile(); }catch(e){} }
+    }).catch(function(){});
+    return {ok:true, cost: me.role==='admin'?0:cost, reason: me.role==='admin'?'管理员免积分':'扣除 '+cost+' 积分'};
+  }
+  // localStorage模式
   if(me.role==='admin'){
     orders.unshift({
       id:'o'+Date.now(), userId:me.id, type:'consume',

@@ -62,6 +62,39 @@ switch ($action) {
         ok(['points' => (int)$updated['points'], 'gained' => $points], '充值成功');
         break;
 
+    // 消费扣积分
+    case 'consume':
+        $points = max(0, (int)($input['points'] ?? 0));
+        $type = $input['type'] ?? 'image';
+        $title = $input['title'] ?? '消费';
+        $meta = [
+            'gen_type' => $type,
+            'count' => $input['count'] ?? 0,
+            'duration' => $input['duration'] ?? 0,
+            'prompt' => $input['prompt'] ?? '',
+            'pack' => $input['pack'] ?? '',
+            'mode' => $input['mode'] ?? '',
+            'cost' => $points,
+        ];
+
+        // 管理员免积分
+        if ($user['role'] === 'admin') {
+            add_order($user['id'], 'consume', 0, 0, $title, $meta);
+            ok(['points' => (int)$user['points'], 'cost' => 0, 'free' => true], '管理员免积分');
+            break;
+        }
+
+        if ((int)$user['points'] < $points) {
+            fail('积分不足，需 ' . $points . ' 积分，当前 ' . $user['points'] . ' 积分');
+        }
+
+        DB::execute('UPDATE users SET points = points - ? WHERE id = ?', [$points, $user['id']]);
+        add_order($user['id'], 'consume', $points, 0, $title, $meta);
+
+        $updated = DB::fetch('SELECT points FROM users WHERE id = ?', [$user['id']]);
+        ok(['points' => (int)$updated['points'], 'cost' => $points], '扣除 ' . $points . ' 积分');
+        break;
+
     default:
         fail('未知操作：' . $action);
 }

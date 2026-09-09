@@ -149,6 +149,9 @@ window.API = (function() {
         async recharge(planId) {
             return call('orders.php?action=recharge', { plan_id: planId });
         },
+        async consume(data) {
+            return call('orders.php?action=consume', data);
+        },
     };
 
     // ============ 系统配置 ============
