@@ -5819,6 +5819,53 @@ function base64ToFile(base64, filename){
   while(n--){ u8arr[n] = bstr.charCodeAt(n); }
   return new File([u8arr], filename, {type:mime});
 }
+// 后端模式：用户管理API封装
+var userApi = {
+  _loading: false,
+  // 获取用户列表
+  async fetchList(keyword){
+    if(typeof API==='undefined' || !API.USE_BACKEND) return null;
+    const r = await API.users.list(1, 200, keyword||'');
+    if(r.ok && r.data){
+      users = r.data.list.map(function(item){
+        return {
+          id: item.id, name: item.name, avatarChar: (item.name||'?').charAt(0),
+          email: item.email, password: item.password||'', role: item.role,
+          points: item.points, expire: item.expire_at||'permanent',
+          perms: item.permissions||[], createdAt: (item.created_at||'').slice(0,10),
+          note: item.note||''
+        };
+      });
+      jsave(K_USERS, users);
+      return r.data;
+    }
+    return null;
+  },
+  // 创建/更新用户
+  async save(userData){
+    if(typeof API==='undefined' || !API.USE_BACKEND) return null;
+    if(userData.id){
+      return await API.users.update(userData.id, userData);
+    } else {
+      return await API.users.create(userData);
+    }
+  },
+  // 删除用户
+  async remove(id){
+    if(typeof API==='undefined' || !API.USE_BACKEND) return null;
+    return await API.users.remove(id);
+  },
+  // 充值积分
+  async recharge(userId, points){
+    if(typeof API==='undefined' || !API.USE_BACKEND) return null;
+    return await API.users.recharge(userId, points);
+  },
+  // 更新权限
+  async updatePerms(userId, perms){
+    if(typeof API==='undefined' || !API.USE_BACKEND) return null;
+    return await API.users.setPermissions(userId, perms);
+  }
+};
 // 格式化历史记录时间
 function fmtHisTime(dateStr){
   if(!dateStr) return '';
@@ -7113,7 +7160,21 @@ function expireHtml(u){
 
 /* ---- 用户管理 ---- */
 function renderUsers(){
-  const q=admUserQ||''; const list=users.filter(u=>!q||u.name.indexOf(q)>-1||(u.email||'').indexOf(q)>-1);
+  const q=admUserQ||'';
+  // 后端模式：从API获取用户列表
+  if(typeof API!=='undefined' && API.USE_BACKEND && !userApi._loading){
+    userApi._loading = true;
+    $('#adminMain').innerHTML = '<div class="his-empty"><div class="he-ic"><span class="spin"></span></div>加载用户列表...</div>';
+    userApi.fetchList(q).then(function(){
+      userApi._loading = false;
+      _renderUsersRows(q);
+    }).catch(function(){ userApi._loading = false; _renderUsersRows(q); });
+    return;
+  }
+  _renderUsersRows(q);
+}
+function _renderUsersRows(q){
+  const list=users.filter(u=>!q||u.name.indexOf(q)>-1||(u.email||'').indexOf(q)>-1);
   $('#adminMain').innerHTML=`
     <div class="adm-toolbar">
       <div class="adm-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><input placeholder="搜索昵称 / 邮箱" value="${q}" oninput="admUserQ=this.value;renderUsers()"></div>
@@ -7158,7 +7219,19 @@ function saveUserForm(){
   const password=($('#uf_password').value||'').trim()||'kj123456';
   if(curUserFormId){ const u=users.find(x=>x.id===curUserFormId); if(u){ u.name=name;u.email=email;u.password=password;u.role=role;u.expire=expire;if(note)u.note=note; } }
   else { users.push({ id:'u'+Date.now(), name, avatarChar:name.charAt(0), email, password, role, points, expire, perms:role==='admin'?'all':[], createdAt:fmtDate(new Date()), note }); }
-  jsave(K_USERS,users); closeModal(); renderUsers(); toast(curUserFormId?'已保存修改':'已创建账号');
+  jsave(K_USERS,users);
+  // 后端模式：同步到服务器
+  if(typeof API!=='undefined' && API.USE_BACKEND){
+    const userData = curUserFormId ? users.find(x=>x.id===curUserFormId) : users[users.length-1];
+    if(userData){
+      userApi.save({
+        id: curUserFormId||null, name: userData.name, email: userData.email,
+        password: password, role: userData.role, points: userData.points,
+        expire_at: userData.expire, permissions: userData.perms, note: userData.note
+      }).catch(function(){});
+    }
+  }
+  closeModal(); renderUsers(); toast(curUserFormId?'已保存修改':'已创建账号');
 }
 function togglePwdVisibility(inputId, btn){
   const el=document.getElementById(inputId);
@@ -7184,7 +7257,9 @@ function savePermForm(){
   const u=users.find(x=>x.id===curUserFormId); if(!u) return;
   const on=[...document.querySelectorAll('.mg-perm.on')].map(x=>x.dataset.perm);
   u.perms=on.length===mainModes().length?'all':on;
-  jsave(K_USERS,users); closeModal(); renderUsers(); renderSideAccount(); toast('玩法权限已更新');
+  jsave(K_USERS,users);
+  if(typeof API!=='undefined' && API.USE_BACKEND){ userApi.updatePerms(curUserFormId, u.perms).catch(function(){}); }
+  closeModal(); renderUsers(); renderSideAccount(); toast('玩法权限已更新');
 }
 function openRechargeFor(id){
   curUserFormId=id; const u=users.find(x=>x.id===id); if(!u) return;
@@ -7199,7 +7274,9 @@ function saveRechargeFor(){
   if(pts<=0){toast('积分需大于 0');return;}
   u.points+=pts;
   orders.unshift({ id:'o'+Date.now(), userId:u.id, type:'recharge', title:'后台充值', points:pts, amount:0, status:'paid', time:fmtNow() });
-  jsave(K_USERS,users); jsave(K_ORDERS,orders); closeModal(); renderUsers(); toast('已为 '+u.name+' 充值 '+pts+' 积分');
+  jsave(K_USERS,users); jsave(K_ORDERS,orders);
+  if(typeof API!=='undefined' && API.USE_BACKEND){ userApi.recharge(curUserFormId, pts).catch(function(){}); }
+  closeModal(); renderUsers(); toast('已为 '+u.name+' 充值 '+pts+' 积分');
 }
 function openUserLedger(id){
   const u=users.find(x=>x.id===id); if(!u) return;
@@ -7230,8 +7307,12 @@ function openUserLedger(id){
   `, [{label:'关闭',cls:'btn btn-ghost',act:'close'}]);
 }
 function delUser(id){
-  const u=users.find(x=>x.id===id); if(!u) return;
-  if(u.role==='admin'){toast('不能删除管理员');return;}
+  if(!confirm('确定删除该用户吗？此操作不可恢复')) return;
+  users = users.filter(u=>u.id!==id);
+  jsave(K_USERS,users);
+  if(typeof API!=='undefined' && API.USE_BACKEND){ userApi.remove(id).catch(function(){}); }
+  renderUsers(); toast('已删除用户');
+}
   curUserFormId=id;
   renderModal('删除用户','确认删除用户 '+u.name+'？此操作不可撤销',`<div class="s-desc">该用户的账号、积分与玩法权限将被清除。</div>`,
     [{label:'取消',cls:'btn btn-ghost',act:'close'},{label:'删除',cls:'btn btn-danger',act:'doDelUser'}]);
