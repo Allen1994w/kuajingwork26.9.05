@@ -594,6 +594,7 @@ textarea{resize:vertical;min-height:86px;line-height:1.6}
 .mc-list-item{display:flex;align-items:center;gap:8px;background:#F8FAFC;border:1px solid #E5EAF0;border-radius:9px;padding:8px 10px;flex-wrap:wrap}
 .mc-list-item.active{background:var(--bg-soft, #F0FDFA);border-color:#0E9488;box-shadow:0 0 0 1px rgba(14,148,136,.25)}
 .mc-li-name{font-weight:600;font-size:13px;color:var(--ink-900,#0F172A)}
+.mc-li-model{font-size:11px;color:#7C3AED;background:rgba(124,58,237,0.08);padding:2px 8px;border-radius:6px;font-family:monospace;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mc-li-ep{font-size:11.5px;color:var(--text-muted,#6B7280);max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mc-li-badge{margin-left:auto}
 .mc-add-btn{margin-top:8px;align-self:flex-start}
@@ -7485,11 +7486,15 @@ function modelFormHTML(key, mc){
     </div>`;
   }
   const nm = (mc&&mc.name) || '';
+  const md = (mc&&mc.model) || '';
+  const modelPlaceholder = key==='text' ? '如：doubao-seed-2-1-turbo-260628' : (key==='image' ? '如：seedream-4.0 / stable-diffusion-xl' : (key==='video' ? '如：doubao-seedance-2-0-fast-260128' : '模型ID'));
   return `<div class="form-grid">
     <div class="field" style="grid-column:1/-1"><div class="field-label">模型名称（用于列表区分）</div><input id="mf_${key}_name" value="${nm}" placeholder="如：火山豆包Turbo / 星河生图"></div>
+    <div class="field" style="grid-column:1/-1"><div class="field-label">模型ID / Model（调用时传给接口的模型名）</div><input id="mf_${key}_model" value="${md}" placeholder="${modelPlaceholder}"></div>
     <div class="field" style="grid-column:1/-1"><div class="field-label">接口地址（链接）</div><input id="mf_${key}_endpoint" value="${e}" placeholder="https://api.example.com/v1/..."></div>
     <div class="field" style="grid-column:1/-1"><div class="field-label">API 秘钥</div><input id="mf_${key}_key" type="password" value="${k}"></div>
     <div class="field"><div class="field-label">接入状态</div><select id="mf_${key}_status"><option value="on" ${s==='on'?'selected':''}>已接入</option><option value="off" ${s==='off'?'selected':''}>未接入</option></select></div>
+    <div class="field" style="grid-column:1/-1"><div class="s-desc" style="margin-top:4px">同一套接口地址和API秘钥可以配置多个模型ID，添加后可在列表中一键切换当前使用的模型。</div></div>
   </div>`;
 }
 function renderModels(){
@@ -7515,6 +7520,7 @@ function renderModels(){
           const ep = (m.endpoint||'未配置接口地址').replace(/^https?:\/\//,'').replace(/\/$/,'');
           return '<div class="mc-list-item' + (active?' active':'') + '">' +
             '<span class="mc-li-name">' + escHtml(m.name||(mt.name+' '+(i+1))) + '</span>' +
+            (m.model ? '<span class="mc-li-model">' + escHtml(m.model) + '</span>' : '') +
             (active ? '<span class="badge ok mc-li-badge">当前</span>' : '<button class="btn btn-ghost btn-sm mc-li-badge" onclick="switchModelInList(\'' + key + '\',' + i + ')">设为当前</button>') +
             '<span class="mc-li-ep">' + escHtml(ep) + '</span>' +
             '<button class="btn btn-ghost btn-sm" onclick="editModelInList(\'' + key + '\',' + i + ')">编辑</button>' +
@@ -7570,7 +7576,8 @@ function readModelPanel(key){
     return { endpoint:'https://mcp.sorftime.com', apiKey:newKey||old.apiKey||'', status:$('#mf_'+key+'_status').value };
   }
   const nmEl = $('#mf_'+key+'_name');
-  return { name:(nmEl?nmEl.value.trim():'') || old.name || (MODEL_META[key].name + ' 模型'), provider:old.provider||'xinghe', model:old.model||'', endpoint:$('#mf_'+key+'_endpoint').value.trim(), apiKey:$('#mf_'+key+'_key').value.trim(), status:$('#mf_'+key+'_status').value };
+  const mdEl = $('#mf_'+key+'_model');
+  return { name:(nmEl?nmEl.value.trim():'') || old.name || (MODEL_META[key].name + ' 模型'), provider:old.provider||'xinghe', model:(mdEl?mdEl.value.trim():'') || old.model || '', endpoint:$('#mf_'+key+'_endpoint').value.trim(), apiKey:$('#mf_'+key+'_key').value.trim(), status:$('#mf_'+key+'_status').value };
 }
 function saveCurModel(){
   if(!curModelEditKey) return;
